@@ -1,7 +1,7 @@
 import { differenceInHours } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { db } from './db';
-import { runReportGeneration } from './routes/report';
+import { notifyCoupleReportReady, runReportGeneration } from './routes/report';
 import { sendPushNotification } from './push';
 
 const CHECK_INTERVAL_MS = Number(process.env.REPORT_SCHEDULER_INTERVAL_MS) || 30 * 60 * 1000;
@@ -42,12 +42,7 @@ async function checkDueReports() {
       const result = await runReportGeneration({ couple, me: memberA, partner: memberB ?? null, isA: true });
       if (result.status !== 'ok') continue; // nothing new yet — retry next tick
 
-      if (couple.notificationsEnabled) {
-        const recipients = [memberA, memberB].filter((m): m is typeof memberA => !!m?.pushToken);
-        await Promise.all(
-          recipients.map((m) => sendPushNotification(m.pushToken!, 'Together', 'Ваш новый отчёт готов 💞', { type: 'report_ready' }))
-        );
-      }
+      await notifyCoupleReportReady(couple, memberA, memberB ?? null);
     } catch (err) {
       console.error(`Report scheduler failed for couple ${couple.id}`, err);
     }

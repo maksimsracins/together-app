@@ -4,8 +4,10 @@ import { ru } from 'date-fns/locale';
 import { db } from '../db';
 import { AuthedRequest, requireAuth } from '../auth';
 import { generateWeeklyReport } from '../openai';
+import { sendPushNotification } from '../push';
 import { ensureCoupleContext, loadCoupleContext } from './couples';
 import { EntryInput, ProfileContext } from '../types';
+import { Couple, User } from '@prisma/client';
 
 export const reportRouter = Router();
 
@@ -89,6 +91,17 @@ function formatWindowLabel(start: Date, end: Date) {
 
 type CoupleCtx = NonNullable<Awaited<ReturnType<typeof ensureCoupleContext>>>;
 
+// Both partners share one report, so both get notified when it's ready —
+// regardless of whether it was generated automatically or by one of them
+// tapping "Обновить".
+export async function notifyCoupleReportReady(couple: Couple, me: User, partner: User | null) {
+  if (!couple.notificationsEnabled) return;
+  const recipients = [me, partner].filter((u): u is User => !!u?.pushToken);
+  await Promise.all(
+    recipients.map((u) => sendPushNotification(u.pushToken!, 'Together', 'Ваш новый отчёт готов 💞', { type: 'report_ready' }))
+  );
+}
+
 // Shared by the manual "/generate" route and the background scheduler — loads
 // whatever's accumulated since the couple's last report (or since the couple
 // was created, if this is the first one), and skips quietly if there's
@@ -164,6 +177,10 @@ reportRouter.post('/generate', async (req: AuthedRequest, res) => {
       return;
     }
     res.json({ weekId: result.generatedAt, weekLabel: result.weekLabel, generatedAt: result.generatedAt, report: result.report });
+
+    notifyCoupleReportReady(ctx.couple, ctx.me, ctx.partner).catch((err) =>
+      console.error('Failed to notify couple of new report', err)
+    );
   } catch (err) {
     console.error('Failed to generate weekly report', err);
     res.status(502).json({ error: 'Не удалось сгенерировать отчёт' });
