@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { TypePicker } from '../../src/components/TypePicker';
 import { EmotionPicker } from '../../src/components/EmotionPicker';
 import { Button } from '../../src/components/Button';
+import { Card } from '../../src/components/Card';
 import { useAppStore } from '../../src/store/useAppStore';
 import { ApiError } from '../../src/services/http';
 import { listAllEntries } from '../../src/services/entries';
@@ -170,23 +171,13 @@ export default function NewEntry() {
           </Text>
         )}
 
-        <Text style={styles.label}>Тип записи</Text>
-        <View pointerEvents={locked ? 'none' : 'auto'} style={locked && styles.disabled}>
-          <TypePicker value={entryType} onChange={setEntryType} />
-        </View>
-
-        <Text style={[styles.label, { marginTop: spacing.lg }]}>Эмоция</Text>
-        <View pointerEvents={locked ? 'none' : 'auto'} style={locked && styles.disabled}>
-          <EmotionPicker value={emotion} onChange={setEmotion} />
-        </View>
-
-        <Text style={[styles.label, { marginTop: spacing.lg }]}>Описание</Text>
         <View style={styles.textWrap}>
           <TextInput
             multiline
             editable={!locked}
+            autoFocus={!isEditing && !locked}
             maxLength={MAX_LEN}
-            placeholder="Расскажите, что вы чувствуете… это увидите только вы"
+            placeholder="Расскажите, что вы чувствуете…"
             placeholderTextColor={colors.inkMuted}
             value={text}
             onChangeText={setText}
@@ -195,6 +186,8 @@ export default function NewEntry() {
           />
           {!locked && <Text style={styles.counter}>{text.length}/{MAX_LEN}</Text>}
         </View>
+
+        {!locked && <Text style={styles.privacyNote}>🔒 Увидите только вы — до недельного отчёта</Text>}
 
         {photoUri ? (
           <View style={styles.photoWrap}>
@@ -207,14 +200,24 @@ export default function NewEntry() {
           </View>
         ) : (
           !locked && (
-            <Pressable style={styles.photoAddBtn} onPress={handlePickPhoto} disabled={pickingPhoto}>
-              <Ionicons name="image-outline" size={20} color={colors.roseDark} />
+            <Pressable style={styles.photoAddBtn} onPress={handlePickPhoto} disabled={pickingPhoto} hitSlop={4}>
+              <Ionicons name="camera-outline" size={17} color={colors.roseDark} />
               <Text style={styles.photoAddText}>{pickingPhoto ? 'Загрузка…' : 'Добавить фото'}</Text>
             </Pressable>
           )
         )}
 
-        {!locked && <Text style={styles.privacyNote}>🔒 Запись увидите только вы — до недельного отчёта</Text>}
+        <Card tone="sand" style={styles.tagCard}>
+          <Text style={styles.label}>Тип записи</Text>
+          <View pointerEvents={locked ? 'none' : 'auto'} style={locked && styles.disabled}>
+            <TypePicker value={entryType} onChange={setEntryType} />
+          </View>
+
+          <Text style={[styles.label, { marginTop: spacing.lg }]}>Эмоция</Text>
+          <View pointerEvents={locked ? 'none' : 'auto'} style={locked && styles.disabled}>
+            <EmotionPicker value={emotion} onChange={setEmotion} />
+          </View>
+        </Card>
 
         {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
 
@@ -251,21 +254,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border,
     padding: spacing.lg,
   },
-  textInput: { ...type.bodyLg, color: colors.ink, minHeight: 120 },
+  textInput: { ...type.bodyLg, color: colors.ink, minHeight: 150 },
   counter: { ...type.bodySm, color: colors.inkMuted, textAlign: 'right', marginTop: spacing.xs },
   photoAddBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, borderStyle: 'dashed',
-    paddingVertical: spacing.md, marginTop: spacing.lg,
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start',
+    borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card,
+    paddingVertical: 10, paddingHorizontal: spacing.md, marginTop: spacing.md,
   },
   photoAddText: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.roseDark, marginLeft: spacing.sm },
-  photoWrap: { marginTop: spacing.lg },
+  photoWrap: { marginTop: spacing.md },
   photo: { width: '100%', height: 200, borderRadius: radius.md, backgroundColor: colors.card },
   photoRemoveBtn: {
     position: 'absolute', top: spacing.sm, right: spacing.sm, width: 28, height: 28, borderRadius: 14,
     backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center',
   },
-  privacyNote: { ...type.bodySm, color: colors.inkMuted, textAlign: 'center', marginTop: spacing.xl },
+  privacyNote: { ...type.bodySm, color: colors.inkMuted, marginTop: spacing.sm },
+  tagCard: { marginTop: spacing.xl },
   errorText: { ...type.bodySm, color: colors.danger, textAlign: 'center', marginTop: spacing.lg },
   lockedNote: {
     ...type.bodySm, color: colors.inkSoft, backgroundColor: colors.card, borderRadius: radius.md,
