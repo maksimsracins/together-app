@@ -143,7 +143,7 @@ export default function Home() {
         <View style={styles.ctaCircle}>
           <Ionicons name="add" size={30} color={colors.white} />
         </View>
-        <Text style={styles.ctaLabel}>Поделиться переживанием</Text>
+        <Text style={styles.ctaLabel}>Поделиться эмоцией</Text>
       </Pressable>
     </Screen>
   );

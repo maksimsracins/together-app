@@ -11,7 +11,7 @@ interface Props {
 
 export function EmotionPicker({ value, onChange }: Props) {
   return (
-    <View style={styles.grid}>
+    <View style={styles.row}>
       {EMOTIONS.map((e) => {
         const selected = value === e.key;
         return (
@@ -21,7 +21,9 @@ export function EmotionPicker({ value, onChange }: Props) {
             style={[styles.item, selected && styles.itemSelected]}
           >
             <Text style={styles.emoji}>{e.emoji}</Text>
-            <Text style={[styles.label, selected && { color: colors.roseDark }]}>{e.label}</Text>
+            <Text style={[styles.label, selected && { color: colors.roseDark, fontFamily: type.bodySemibold.fontFamily }]}>
+              {e.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -30,20 +32,23 @@ export function EmotionPicker({ value, onChange }: Props) {
 }
 
 const styles = StyleSheet.create({
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  row: { flexDirection: 'row', flexWrap: 'wrap' },
   item: {
-    width: '31%',
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
     backgroundColor: colors.card,
     borderWidth: 1.5,
     borderColor: colors.border,
+    marginRight: spacing.sm,
+    marginBottom: spacing.sm,
   },
   itemSelected: {
     backgroundColor: colors.roseMist,
     borderColor: colors.rose,
   },
-  emoji: { fontSize: 26, marginBottom: 4 },
-  label: { ...type.bodySm, color: colors.inkSoft, textAlign: 'center' },
+  emoji: { fontSize: 16, marginRight: 6 },
+  label: { ...type.bodySm, color: colors.inkSoft },
 });
