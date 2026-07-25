@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -10,7 +10,8 @@ import { EmotionPicker } from '../../src/components/EmotionPicker';
 import { Button } from '../../src/components/Button';
 import { useAppStore } from '../../src/store/useAppStore';
 import { ApiError } from '../../src/services/http';
-import { EmotionKey, EntryType } from '../../src/types';
+import { listAllEntries } from '../../src/services/entries';
+import { EmotionKey, Entry, EntryType } from '../../src/types';
 import { colors, radius, spacing, type } from '../../src/theme';
 
 const MAX_LEN = 1000;
@@ -18,11 +19,39 @@ const MAX_LEN = 1000;
 export default function NewEntry() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEditing = !!id;
-  const entries = useAppStore((s) => s.entries);
+  const storeEntries = useAppStore((s) => s.entries);
   const addEntry = useAppStore((s) => s.addEntry);
   const updateEntry = useAppStore((s) => s.updateEntry);
   const deleteEntry = useAppStore((s) => s.deleteEntry);
-  const existing = isEditing ? entries.find((e) => e.id === id) : undefined;
+
+  // The store only ever holds this week's entries, but Calendar lets you open
+  // any entry regardless of when it was written -- fall back to fetching the
+  // full list when the one we're editing isn't in that week-scoped slice.
+  const storeMatch = isEditing ? storeEntries.find((e) => e.id === id) : undefined;
+  const [fetchedExisting, setFetchedExisting] = useState<Entry | null>(null);
+  const [resolving, setResolving] = useState(isEditing && !storeMatch);
+
+  useEffect(() => {
+    if (!isEditing || storeMatch) {
+      setResolving(false);
+      return;
+    }
+    let cancelled = false;
+    setResolving(true);
+    listAllEntries()
+      .then((all) => {
+        if (!cancelled) setFetchedExisting(all.find((e) => e.id === id) ?? null);
+      })
+      .finally(() => {
+        if (!cancelled) setResolving(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, id]);
+
+  const existing = storeMatch ?? fetchedExisting ?? undefined;
   const locked = !!existing?.includedInReportId;
 
   const [entryType, setEntryType] = useState<EntryType>(existing?.type ?? 'worry');
@@ -32,6 +61,19 @@ export default function NewEntry() {
   const [pickingPhoto, setPickingPhoto] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Only fires once, right when the async fallback fetch resolves -- the
+  // synchronous store-match path never needed this, its useState initializers
+  // already had the right values on first render.
+  useEffect(() => {
+    if (!resolving && fetchedExisting) {
+      setEntryType(fetchedExisting.type);
+      setEmotion(fetchedExisting.emotion);
+      setText(fetchedExisting.text);
+      setPhotoUri(fetchedExisting.photoUri);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolving]);
 
   const canSave = emotion !== null && text.trim().length > 0;
 
@@ -113,6 +155,9 @@ export default function NewEntry() {
         </View>
       </View>
 
+      {resolving ? (
+        <ActivityIndicator style={{ marginTop: spacing.xxl }} color={colors.roseDark} />
+      ) : (
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.content}
@@ -183,6 +228,7 @@ export default function NewEntry() {
           />
         )}
       </ScrollView>
+      )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

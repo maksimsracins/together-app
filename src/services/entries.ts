@@ -23,6 +23,10 @@ export function listPartnerEntries() {
   return api<Entry[]>('/api/entries/partner');
 }
 
+export function getPartnerActivity() {
+  return api<{ createdAts: string[] }>('/api/entries/partner/activity');
+}
+
 export function createEntry(input: EntryInput) {
   return api<Entry>('/api/entries', { method: 'POST', body: input });
 }

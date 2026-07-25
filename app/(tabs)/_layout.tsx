@@ -110,13 +110,6 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="history"
-        options={{
-          title: 'Мои записи',
-          tabBarIcon: ({ color, size }) => <Ionicons name="book-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="calendar"
         options={{
           title: 'Календарь',

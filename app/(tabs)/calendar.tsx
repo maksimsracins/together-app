@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import {
@@ -20,7 +21,7 @@ import { EntryCard } from '../../src/components/EntryCard';
 import { ReportSummaryCard } from '../../src/components/ReportSummaryCard';
 import { useAppStore } from '../../src/store/useAppStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
-import { listAllEntries } from '../../src/services/entries';
+import { getPartnerActivity, listAllEntries } from '../../src/services/entries';
 import { updateCoupleSettings } from '../../src/services/couples';
 import { registerPushToken } from '../../src/services/users';
 import { ApiError } from '../../src/services/http';
@@ -193,15 +194,26 @@ export default function CalendarScreen() {
   const [weekCursor, setWeekCursor] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selected, setSelected] = useState<Selection>({ date: new Date(), author: 'mine' });
   const [myEntries, setMyEntries] = useState<Entry[] | null>(null);
+  const [partnerActivityDates, setPartnerActivityDates] = useState<Date[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    listAllEntries()
-      .then(setMyEntries)
-      .catch(() => setLoadError('Не удалось загрузить записи'))
-      .finally(() => setLoading(false));
-  }, []);
+  // Refetch on every focus (not just mount) so adding, editing, or deleting an
+  // entry elsewhere in the app is reflected here as soon as you come back —
+  // this is now the only place your own entries are browsable.
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      setLoadError(null);
+      Promise.all([listAllEntries(), getPartnerActivity()])
+        .then(([mine, activity]) => {
+          setMyEntries(mine);
+          setPartnerActivityDates(activity.createdAts.map((iso) => new Date(iso)));
+        })
+        .catch(() => setLoadError('Не удалось загрузить записи'))
+        .finally(() => setLoading(false));
+    }, [])
+  );
 
   const goToWeek = (newCursor: Date) => {
     setWeekCursor(newCursor);
@@ -219,12 +231,20 @@ export default function CalendarScreen() {
   const hasEntry = (list: Entry[] | null, day: Date) =>
     !!list?.some((e) => isSameDay(new Date(e.createdAt), day));
 
+  const hasPartnerActivity = (day: Date) => partnerActivityDates.some((d) => isSameDay(d, day));
+
   const selectedEntries = useMemo(() => {
     const source = selected.author === 'mine' ? myEntries : partnerEntries;
     return (source ?? [])
       .filter((e) => isSameDay(new Date(e.createdAt), selected.date))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [myEntries, partnerEntries, selected]);
+
+  // Partner activity can be "known" (a dot showing they wrote something)
+  // before it's actually visible (only once a report unlocks it) -- so an
+  // empty list for a day with a dot means "hidden," not "nothing happened."
+  const partnerActivityHiddenOnSelected =
+    selected.author === 'partner' && selectedEntries.length === 0 && hasPartnerActivity(selected.date);
 
   const weekLabel = `${format(weekCursor, 'd MMM', { locale: ru })} – ${format(endOfWeek(weekCursor, { weekStartsOn: 1 }), 'd MMM', { locale: ru })}`;
 
@@ -464,7 +484,7 @@ export default function CalendarScreen() {
                   onPress={() => setSelected({ date: day, author: 'partner' })}
                 >
                   <View style={[styles.cell, { backgroundColor: active ? colors.skyDark : colors.skyMist }]}>
-                    {hasEntry(partnerEntries, day) && (
+                    {hasPartnerActivity(day) && (
                       <View style={[styles.dot, { backgroundColor: active ? colors.white : colors.skyDark }]} />
                     )}
                   </View>
@@ -487,8 +507,15 @@ export default function CalendarScreen() {
         <Text style={styles.emptyText}>⚠️ {loadError}</Text>
       ) : selectedEntries.length === 0 ? (
         <Card style={{ alignItems: 'center' }}>
-          <Text style={{ fontSize: 28, marginBottom: spacing.sm }}>🌤️</Text>
-          <Text style={styles.emptyText}>Записей за этот день нет</Text>
+          <Text style={{ fontSize: 28, marginBottom: spacing.sm }}>{partnerActivityHiddenOnSelected ? '🔒' : '🌤️'}</Text>
+          <Text style={styles.emptyText}>
+            {partnerActivityHiddenOnSelected
+              ? 'Партнёр кое-что добавил(а) — увидите после отчёта'
+              : 'Записей за этот день нет'}
+          </Text>
+          {selected.author === 'mine' && isTodayFn(selected.date) && (
+            <Button label="Добавить запись" onPress={() => router.push('/entry/new')} style={{ marginTop: spacing.lg }} />
+          )}
         </Card>
       ) : (
         selectedEntries.map((e) => (

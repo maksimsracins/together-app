@@ -80,6 +80,34 @@ entriesRouter.get('/partner', async (req: AuthedRequest, res) => {
   res.json(entries.map(serializeEntry));
 });
 
+// A lighter-weight signal than /partner: just which dates your partner wrote
+// something on, no text, no report-unlock gating. Mirrors what the
+// "partner_entry" push notification already reveals (that they shared
+// something, never what) -- so a calendar dot for the same event isn't new
+// exposure, it's the same fact shown a different way.
+entriesRouter.get('/partner/activity', async (req: AuthedRequest, res) => {
+  const user = await db.user.findUnique({ where: { id: req.userId } });
+  if (!user?.coupleId) {
+    res.json({ dates: [] });
+    return;
+  }
+
+  const partner = await db.user.findFirst({ where: { coupleId: user.coupleId, id: { not: user.id } } });
+  if (!partner) {
+    res.json({ dates: [] });
+    return;
+  }
+
+  const entries = await db.entry.findMany({
+    where: { userId: partner.id },
+    select: { createdAt: true },
+  });
+  // Raw timestamps, not server-bucketed dates -- the client already buckets
+  // entries into calendar days in local time (isSameDay), and truncating to
+  // a UTC date string here would drift a day near midnight in most timezones.
+  res.json({ createdAts: entries.map((e) => e.createdAt.toISOString()) });
+});
+
 entriesRouter.post('/', async (req: AuthedRequest, res) => {
   const body = req.body as EntryBody;
   const error = validateEntryBody(body);
