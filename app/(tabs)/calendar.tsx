@@ -371,10 +371,13 @@ export default function CalendarScreen() {
         />
       </Card>
 
-      <Pressable style={styles.historyLink} onPress={() => router.push('/report/history')} hitSlop={8}>
-        <Text style={styles.historyLinkText}>История отчётов</Text>
-        <Ionicons name="chevron-forward" size={14} color={colors.roseDark} />
-      </Pressable>
+      <Button
+        label="История отчётов"
+        onPress={() => router.push('/report/history')}
+        variant="outline"
+        icon={<Ionicons name="time-outline" size={17} color={colors.ink} />}
+        style={{ marginBottom: spacing.lg }}
+      />
 
       {r && <ReportSummaryCard narrative={r.narrative} narrativeDeep={r.narrativeDeep} />}
 
@@ -519,11 +522,6 @@ const styles = StyleSheet.create({
   aiHint: { ...type.bodySm, color: colors.inkMuted, marginTop: 2 },
   aiError: { ...type.bodySm, color: colors.danger, marginTop: spacing.xs },
   aiButton: { paddingHorizontal: spacing.lg, paddingVertical: 10, marginLeft: spacing.md },
-  historyLink: {
-    flexDirection: 'row', alignItems: 'center', alignSelf: 'center',
-    marginBottom: spacing.lg, paddingVertical: spacing.xs,
-  },
-  historyLinkText: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.roseDark, marginRight: 2 },
   weekHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md,
   },
