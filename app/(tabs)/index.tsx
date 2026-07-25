@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/components/Screen';
 import { Card } from '../../src/components/Card';
 import { Avatar } from '../../src/components/Avatar';
+import { useAppStore } from '../../src/store/useAppStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useNotificationsStore } from '../../src/store/useNotificationsStore';
 import { getCoupleSettings } from '../../src/services/couples';
@@ -27,6 +28,9 @@ export default function Home() {
   const user = useAuthStore((s) => s.user)!;
   const partner = useAuthStore((s) => s.partner);
   const unreadCount = useNotificationsStore((s) => s.unreadCount);
+  const weeklyReport = useAppStore((s) => s.weeklyReport);
+  const reportStatus = useAppStore((s) => s.reportStatus);
+  const isGenerating = reportStatus === 'loading';
   const g = greeting();
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
 
@@ -91,6 +95,26 @@ export default function Home() {
         <Text style={styles.countdownEmoji}>📖</Text>
       </Card>
 
+      <Pressable
+        style={({ pressed }) => [styles.reportCard, pressed && styles.reportCardPressed]}
+        onPress={() => router.push('/report/summary')}
+      >
+        <View style={styles.reportIconWrap}>
+          {isGenerating ? (
+            <ActivityIndicator size="small" color={colors.roseDark} />
+          ) : (
+            <Ionicons name={weeklyReport ? 'book-outline' : 'sparkles-outline'} size={20} color={colors.roseDark} />
+          )}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.reportTitle}>Ваша история недели</Text>
+          <Text style={styles.reportHint}>
+            {isGenerating ? 'Генерируем…' : weeklyReport ? 'Готово — можно прочитать' : 'Ещё не сгенерирована'}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.inkMuted} />
+      </Pressable>
+
       <View style={{ flex: 1 }} />
 
       <Pressable style={styles.cta} onPress={() => router.push('/entry/new')}>
@@ -154,6 +178,18 @@ const styles = StyleSheet.create({
   countdownLabel: { ...type.bodySm, color: colors.sageDark },
   countdownValue: { ...type.h2, color: colors.ink, marginTop: 4 },
   countdownEmoji: { fontSize: 34 },
+  reportCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.card, borderRadius: radius.lg,
+    padding: spacing.lg, ...shadow.soft,
+  },
+  reportCardPressed: { opacity: 0.85 },
+  reportIconWrap: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: colors.roseMist,
+    alignItems: 'center', justifyContent: 'center', marginRight: spacing.md,
+  },
+  reportTitle: { ...type.bodySemibold, fontFamily: type.bodySemibold.fontFamily, color: colors.ink },
+  reportHint: { ...type.bodySm, color: colors.inkMuted, marginTop: 2 },
   cta: { alignItems: 'center', marginBottom: spacing.xxl },
   ctaCircle: {
     width: 64, height: 64, borderRadius: 32, backgroundColor: colors.rose,

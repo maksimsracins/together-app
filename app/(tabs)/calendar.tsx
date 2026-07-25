@@ -18,7 +18,6 @@ import { Screen } from '../../src/components/Screen';
 import { Card } from '../../src/components/Card';
 import { Button } from '../../src/components/Button';
 import { EntryCard } from '../../src/components/EntryCard';
-import { ReportSummaryCard } from '../../src/components/ReportSummaryCard';
 import { useAppStore } from '../../src/store/useAppStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { getPartnerActivity, listAllEntries } from '../../src/services/entries';
@@ -26,7 +25,7 @@ import { updateCoupleSettings } from '../../src/services/couples';
 import { registerPushToken } from '../../src/services/users';
 import { ApiError } from '../../src/services/http';
 import { Entry } from '../../src/types';
-import { colors, radius, shadow, spacing, type } from '../../src/theme';
+import { colors, radius, spacing, type } from '../../src/theme';
 
 type Author = 'mine' | 'partner';
 interface Selection {
@@ -63,19 +62,10 @@ export default function CalendarScreen() {
   const partnerEntries = useAppStore((s) => s.partnerEntries);
   const partner = useAuthStore((s) => s.partner);
   const updateProfile = useAuthStore((s) => s.updateProfile);
-  const {
-    weeklyReport: r,
-    generateReport,
-    reportStatus,
-    reportError,
-    reportSource,
-    coupleSettings,
-  } = useAppStore();
+  const { coupleSettings } = useAppStore();
   const user = useAuthStore((s) => s.user)!;
-  const isGenerating = reportStatus === 'loading';
 
   const [settingsVisible, setSettingsVisible] = useState(false);
-  const [summaryVisible, setSummaryVisible] = useState(false);
   const [reportWeekday, setReportWeekday] = useState<number | null>(null);
   const [reportHour, setReportHour] = useState<number | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -245,7 +235,6 @@ export default function CalendarScreen() {
   const weekLabel = `${format(weekCursor, 'd MMM', { locale: ru })} – ${format(endOfWeek(weekCursor, { weekStartsOn: 1 }), 'd MMM', { locale: ru })}`;
 
   return (
-    <View style={{ flex: 1 }}>
     <Screen>
       <Pressable style={styles.settingsBtn} onPress={() => setSettingsVisible(true)} hitSlop={10}>
         <Ionicons name="settings-outline" size={16} color={colors.roseDark} />
@@ -470,54 +459,7 @@ export default function CalendarScreen() {
         ))
       )}
 
-      <View style={{ height: 76 }} />
     </Screen>
-
-      {reportStatus === 'error' && (
-        <Text style={[styles.aiError, styles.bottomError]}>⚠️ {reportError}</Text>
-      )}
-
-      <Pressable
-        style={styles.bottomBar}
-        onPress={() => (r ? setSummaryVisible(true) : generateReport())}
-        disabled={isGenerating}
-      >
-        {isGenerating ? (
-          <ActivityIndicator size="small" color={colors.white} />
-        ) : (
-          <Ionicons name={r ? 'book-outline' : 'sparkles-outline'} size={18} color={colors.white} />
-        )}
-        <Text style={styles.bottomBarLabel}>
-          {isGenerating ? 'Генерируем…' : r ? 'Ваша история недели' : 'Сгенерировать отчёт'}
-        </Text>
-      </Pressable>
-
-      <Modal
-        visible={summaryVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSummaryVisible(false)}
-      >
-        <View style={styles.pickerOverlay}>
-          <Pressable style={styles.pickerBackdrop} onPress={() => setSummaryVisible(false)} />
-          <View style={styles.pickerSheet}>
-            <View style={styles.pickerSheetHeader}>
-              <Pressable onPress={generateReport} disabled={isGenerating} hitSlop={10}>
-                {isGenerating ? (
-                  <ActivityIndicator size="small" color={colors.roseDark} />
-                ) : (
-                  <Ionicons name="refresh-outline" size={20} color={colors.roseDark} />
-                )}
-              </Pressable>
-              <Pressable onPress={() => setSummaryVisible(false)}>
-                <Text style={styles.pickerDone}>Готово</Text>
-              </Pressable>
-            </View>
-            {r && <ReportSummaryCard narrative={r.narrative} narrativeDeep={r.narrativeDeep} />}
-          </View>
-        </View>
-      </Modal>
-    </View>
   );
 }
 
@@ -558,20 +500,6 @@ const styles = StyleSheet.create({
   },
   notifyRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.xl },
   notifyError: { ...type.bodySm, color: colors.danger, marginTop: spacing.md },
-  aiError: { ...type.bodySm, color: colors.danger, textAlign: 'center', marginTop: spacing.xs },
-  bottomError: {
-    position: 'absolute', bottom: 84, left: spacing.xl, right: spacing.xl,
-    backgroundColor: colors.cream, borderRadius: radius.md, paddingVertical: spacing.xs,
-  },
-  bottomBar: {
-    position: 'absolute', bottom: spacing.lg, left: spacing.xl, right: spacing.xl,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.rose, borderRadius: radius.pill, paddingVertical: 14,
-    ...shadow.soft,
-  },
-  bottomBarLabel: {
-    ...type.bodySemibold, fontFamily: type.bodySemibold.fontFamily, color: colors.white, marginLeft: spacing.sm,
-  },
   weekHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md,
   },
