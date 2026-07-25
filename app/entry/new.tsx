@@ -22,6 +22,7 @@ export default function NewEntry() {
   const updateEntry = useAppStore((s) => s.updateEntry);
   const deleteEntry = useAppStore((s) => s.deleteEntry);
   const existing = isEditing ? entries.find((e) => e.id === id) : undefined;
+  const locked = !!existing?.includedInReportId;
 
   const [entryType, setEntryType] = useState<EntryType>(existing?.type ?? 'worry');
   const [emotion, setEmotion] = useState<EmotionKey | null>(existing?.emotion ?? null);
@@ -73,9 +74,9 @@ export default function NewEntry() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.header}>
-        <Text style={styles.title}>{isEditing ? 'Изменить запись' : 'Новая запись'}</Text>
+        <Text style={styles.title}>{locked ? 'Запись' : isEditing ? 'Изменить запись' : 'Новая запись'}</Text>
         <View style={{ flexDirection: 'row' }}>
-          {isEditing && (
+          {isEditing && !locked && (
             <Pressable onPress={handleDelete} style={[styles.closeBtn, { marginRight: spacing.sm }]} hitSlop={10}>
               <Ionicons name="trash-outline" size={18} color={colors.danger} />
             </Pressable>
@@ -92,16 +93,27 @@ export default function NewEntry() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {locked && (
+          <Text style={styles.lockedNote}>
+            🔒 Эта запись уже вошла в отчёт и теперь доступна только для просмотра — изменить или удалить её нельзя
+          </Text>
+        )}
+
         <Text style={styles.label}>Тип записи</Text>
-        <TypePicker value={entryType} onChange={setEntryType} />
+        <View pointerEvents={locked ? 'none' : 'auto'} style={locked && styles.disabled}>
+          <TypePicker value={entryType} onChange={setEntryType} />
+        </View>
 
         <Text style={[styles.label, { marginTop: spacing.lg }]}>Эмоция</Text>
-        <EmotionPicker value={emotion} onChange={setEmotion} />
+        <View pointerEvents={locked ? 'none' : 'auto'} style={locked && styles.disabled}>
+          <EmotionPicker value={emotion} onChange={setEmotion} />
+        </View>
 
         <Text style={[styles.label, { marginTop: spacing.lg }]}>Описание</Text>
         <View style={styles.textWrap}>
           <TextInput
             multiline
+            editable={!locked}
             maxLength={MAX_LEN}
             placeholder="Расскажите, что вы чувствуете… это увидите только вы"
             placeholderTextColor={colors.inkMuted}
@@ -110,20 +122,22 @@ export default function NewEntry() {
             style={styles.textInput}
             textAlignVertical="top"
           />
-          <Text style={styles.counter}>{text.length}/{MAX_LEN}</Text>
+          {!locked && <Text style={styles.counter}>{text.length}/{MAX_LEN}</Text>}
         </View>
 
-        <Text style={styles.privacyNote}>🔒 Запись увидите только вы — до недельного отчёта</Text>
+        {!locked && <Text style={styles.privacyNote}>🔒 Запись увидите только вы — до недельного отчёта</Text>}
 
         {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
 
-        <Button
-          label={isEditing ? 'Сохранить изменения' : 'Сохранить'}
-          onPress={handleSave}
-          disabled={!canSave || saving}
-          loading={saving}
-          style={{ marginTop: spacing.lg }}
-        />
+        {!locked && (
+          <Button
+            label={isEditing ? 'Сохранить изменения' : 'Сохранить'}
+            onPress={handleSave}
+            disabled={!canSave || saving}
+            loading={saving}
+            style={{ marginTop: spacing.lg }}
+          />
+        )}
       </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -151,4 +165,9 @@ const styles = StyleSheet.create({
   counter: { ...type.bodySm, color: colors.inkMuted, textAlign: 'right', marginTop: spacing.xs },
   privacyNote: { ...type.bodySm, color: colors.inkMuted, textAlign: 'center', marginTop: spacing.xl },
   errorText: { ...type.bodySm, color: colors.danger, textAlign: 'center', marginTop: spacing.lg },
+  lockedNote: {
+    ...type.bodySm, color: colors.inkSoft, backgroundColor: colors.card, borderRadius: radius.md,
+    padding: spacing.md, marginBottom: spacing.lg, lineHeight: 19,
+  },
+  disabled: { opacity: 0.5 },
 });

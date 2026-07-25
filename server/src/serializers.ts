@@ -40,6 +40,7 @@ export function serializeEntry(entry: Entry) {
     hasPhoto: entry.hasPhoto,
     hasAudio: entry.hasAudio,
     weekId: entry.weekId,
+    includedInReportId: entry.includedInReportId,
     createdAt: entry.createdAt.toISOString(),
   };
 }

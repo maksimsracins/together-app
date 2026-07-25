@@ -124,6 +124,10 @@ entriesRouter.patch('/:id', async (req: AuthedRequest, res) => {
     res.status(404).json({ error: 'Запись не найдена' });
     return;
   }
+  if (existing.includedInReportId) {
+    res.status(409).json({ error: 'Эта запись уже вошла в отчёт — изменить её нельзя' });
+    return;
+  }
 
   const body = req.body as EntryBody;
   const error = validateEntryBody(body);
@@ -182,6 +186,10 @@ entriesRouter.delete('/:id', async (req: AuthedRequest, res) => {
   const existing = await db.entry.findUnique({ where: { id: req.params.id } });
   if (!existing || existing.userId !== req.userId) {
     res.status(404).json({ error: 'Запись не найдена' });
+    return;
+  }
+  if (existing.includedInReportId) {
+    res.status(409).json({ error: 'Эта запись уже вошла в отчёт — удалить её нельзя' });
     return;
   }
   await db.entry.delete({ where: { id: existing.id } });

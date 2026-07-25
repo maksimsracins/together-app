@@ -158,14 +158,22 @@ export default function History() {
     updateMe({ journalReminderEnabled: next }).catch(() => setJournalReminderEnabled(!next));
   };
 
-  const grouped = useMemo(() => {
+  const [showReported, setShowReported] = useState(false);
+
+  const activeEntries = useMemo(() => entries.filter((e) => !e.includedInReportId), [entries]);
+  const reportedEntries = useMemo(() => entries.filter((e) => e.includedInReportId), [entries]);
+
+  const groupByDay = (list: typeof entries) => {
     const map = new Map<string, typeof entries>();
-    entries.forEach((e) => {
+    list.forEach((e) => {
       const key = formatDayLabel(new Date(e.createdAt));
       map.set(key, [...(map.get(key) ?? []), e]);
     });
     return Array.from(map.entries());
-  }, [entries]);
+  };
+
+  const groupedActive = useMemo(() => groupByDay(activeEntries), [activeEntries]);
+  const groupedReported = useMemo(() => groupByDay(reportedEntries), [reportedEntries]);
 
   const groupedPartner = useMemo(() => {
     const map = new Map<string, typeof partnerEntries>();
@@ -299,14 +307,45 @@ export default function History() {
           <Button label="Добавить запись" onPress={() => router.push('/entry/new')} style={{ marginTop: spacing.lg }} />
         </Card>
       ) : (
-        grouped.map(([day, items]) => (
-          <View key={day} style={{ marginBottom: spacing.lg }}>
-            <Text style={styles.dayLabel}>{day}</Text>
-            {items.map((e) => (
-              <EntryCard key={e.id} entry={e} editable />
-            ))}
-          </View>
-        ))
+        <>
+          {activeEntries.length === 0 ? (
+            <Card style={{ alignItems: 'center', marginTop: spacing.lg }}>
+              <Text style={{ fontSize: 28, marginBottom: spacing.sm }}>✨</Text>
+              <Text style={styles.emptyText}>Все записи этой недели уже вошли в отчёт</Text>
+              <Button label="Добавить запись" onPress={() => router.push('/entry/new')} style={{ marginTop: spacing.lg }} />
+            </Card>
+          ) : (
+            groupedActive.map(([day, items]) => (
+              <View key={day} style={{ marginBottom: spacing.lg }}>
+                <Text style={styles.dayLabel}>{day}</Text>
+                {items.map((e) => (
+                  <EntryCard key={e.id} entry={e} editable />
+                ))}
+              </View>
+            ))
+          )}
+
+          {reportedEntries.length > 0 && (
+            <>
+              <Pressable style={styles.reportedToggle} onPress={() => setShowReported((v) => !v)} hitSlop={8}>
+                <Text style={styles.reportedToggleText}>
+                  {showReported ? 'Скрыть записи из отчёта' : `Показать записи из отчёта (${reportedEntries.length})`}
+                </Text>
+                <Ionicons name={showReported ? 'chevron-up' : 'chevron-down'} size={14} color={colors.roseDark} />
+              </Pressable>
+
+              {showReported &&
+                groupedReported.map(([day, items]) => (
+                  <View key={day} style={{ marginBottom: spacing.lg }}>
+                    <Text style={styles.dayLabel}>{day}</Text>
+                    {items.map((e) => (
+                      <EntryCard key={e.id} entry={e} editable />
+                    ))}
+                  </View>
+                ))}
+            </>
+          )}
+        </>
       )}
 
       {partner && (
@@ -374,4 +413,9 @@ const styles = StyleSheet.create({
   notifyError: { ...type.bodySm, color: colors.danger, marginTop: spacing.md },
   dayLabel: { ...type.label, color: colors.roseDark, textTransform: 'uppercase', marginBottom: spacing.md },
   emptyText: { ...type.body, color: colors.inkMuted },
+  reportedToggle: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: spacing.md, marginBottom: spacing.md,
+  },
+  reportedToggleText: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.roseDark, marginRight: 4 },
 });

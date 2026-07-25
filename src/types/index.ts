@@ -33,6 +33,7 @@ export interface Entry {
   hasPhoto: boolean;
   hasAudio: boolean;
   weekId?: string;
+  includedInReportId: string | null;
   createdAt: string; // ISO
 }
 

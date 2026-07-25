@@ -10,6 +10,7 @@ export function EntryCard({ entry, editable = false }: { entry: Entry; editable?
   const typeMeta = entryTypeMeta(entry.type);
   const emo = emotionMeta(entry.emotion);
   const time = new Date(entry.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const locked = !!entry.includedInReportId;
 
   return (
     <Pressable
@@ -32,6 +33,11 @@ export function EntryCard({ entry, editable = false }: { entry: Entry; editable?
           <Text style={styles.emotionBadge}>
             {emo.emoji} {emo.label}
           </Text>
+          {locked && (
+            <Text style={styles.lockedBadge}>
+              🔒 В отчёте
+            </Text>
+          )}
           {entry.hasPhoto && <Ionicons name="image-outline" size={15} color={colors.inkMuted} style={styles.metaIcon} />}
           {entry.hasAudio && <Ionicons name="mic-outline" size={15} color={colors.inkMuted} style={styles.metaIcon} />}
           {entry.tags.map((tag) => (
@@ -70,6 +76,7 @@ const styles = StyleSheet.create({
   text: { ...type.body, color: colors.inkSoft },
   footerRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm, flexWrap: 'wrap' },
   emotionBadge: { ...type.bodySm, color: colors.roseDark, marginRight: spacing.sm },
+  lockedBadge: { ...type.bodySm, color: colors.inkMuted, marginRight: spacing.sm },
   metaIcon: { marginRight: spacing.sm },
   tag: { ...type.bodySm, color: colors.sageDark, marginRight: spacing.sm },
 });
