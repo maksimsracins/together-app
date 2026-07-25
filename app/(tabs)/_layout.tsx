@@ -124,13 +124,6 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="report"
-        options={{
-          title: 'Отчёт',
-          tabBarIcon: ({ color, size }) => <Ionicons name="heart-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="profile"
         options={{
           title: 'Профиль',
