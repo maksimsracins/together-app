@@ -69,7 +69,6 @@ export default function CalendarScreen() {
     reportStatus,
     reportError,
     reportSource,
-    reportGeneratedAt,
     coupleSettings,
   } = useAppStore();
   const user = useAuthStore((s) => s.user)!;
@@ -470,36 +469,15 @@ export default function CalendarScreen() {
         ))
       )}
 
-      <Card tone={reportSource === 'ai' ? 'sage' : 'card'} style={styles.aiCard}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.aiTitle} numberOfLines={1}>
-            {reportSource === 'ai' ? '✨ Анализ от AI' : 'Отчёт ещё не создан'}
-          </Text>
-          <Text style={styles.aiSubtitle} numberOfLines={1}>
-            {reportSource === 'ai'
-              ? `Обновлено ${new Date(reportGeneratedAt!).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
-              : 'Нажмите, чтобы разобрать записи'}
-          </Text>
-          {reportStatus === 'error' && <Text style={styles.aiError} numberOfLines={2}>⚠️ {reportError}</Text>}
-        </View>
-        <Button
-          label={reportSource === 'ai' ? 'Обновить' : 'Сгенерировать'}
-          onPress={generateReport}
-          variant="secondary"
-          fullWidth={false}
-          loading={isGenerating}
-          style={styles.aiButton}
-        />
-      </Card>
-
-      {r && (
-        <Button
-          label="Ваша история недели"
-          onPress={() => setSummaryVisible(true)}
-          variant="outline"
-          icon={<Ionicons name="book-outline" size={17} color={colors.ink} />}
-        />
-      )}
+      <Button
+        label={reportSource === 'ai' ? 'Ваша история недели' : isGenerating ? 'Генерируем…' : 'Сгенерировать отчёт'}
+        onPress={() => (reportSource === 'ai' ? setSummaryVisible(true) : generateReport())}
+        variant="outline"
+        icon={<Ionicons name={reportSource === 'ai' ? 'book-outline' : 'sparkles-outline'} size={17} color={colors.ink} />}
+        loading={isGenerating}
+        style={styles.aiButton}
+      />
+      {reportStatus === 'error' && <Text style={styles.aiError}>⚠️ {reportError}</Text>}
 
       <Modal
         visible={summaryVisible}
@@ -511,7 +489,13 @@ export default function CalendarScreen() {
           <Pressable style={styles.pickerBackdrop} onPress={() => setSummaryVisible(false)} />
           <View style={styles.pickerSheet}>
             <View style={styles.pickerSheetHeader}>
-              <View style={{ width: 60 }} />
+              <Pressable onPress={generateReport} disabled={isGenerating} hitSlop={10}>
+                {isGenerating ? (
+                  <ActivityIndicator size="small" color={colors.roseDark} />
+                ) : (
+                  <Ionicons name="refresh-outline" size={20} color={colors.roseDark} />
+                )}
+              </Pressable>
               <Pressable onPress={() => setSummaryVisible(false)}>
                 <Text style={styles.pickerDone}>Готово</Text>
               </Pressable>
@@ -561,14 +545,8 @@ const styles = StyleSheet.create({
   },
   notifyRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.xl },
   notifyError: { ...type.bodySm, color: colors.danger, marginTop: spacing.md },
-  aiCard: {
-    flexDirection: 'row', alignItems: 'center', marginTop: spacing.xl, marginBottom: spacing.md,
-    paddingVertical: spacing.md, paddingHorizontal: spacing.lg,
-  },
-  aiTitle: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.ink },
-  aiSubtitle: { ...type.label, fontSize: 11, color: colors.inkMuted, marginTop: 2 },
-  aiError: { ...type.bodySm, color: colors.danger, marginTop: spacing.xs },
-  aiButton: { paddingHorizontal: spacing.md, paddingVertical: 8, marginLeft: spacing.md },
+  aiButton: { marginTop: spacing.xl, paddingVertical: 10 },
+  aiError: { ...type.bodySm, color: colors.danger, textAlign: 'center', marginTop: spacing.xs },
   weekHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md,
   },
