@@ -30,9 +30,10 @@ function validateEntryBody(body: EntryBody): string | null {
 }
 
 entriesRouter.get('/', async (req: AuthedRequest, res) => {
+  const all = req.query.all === 'true';
   const weekId = (req.query.weekId as string | undefined) ?? weekIdFor();
   const entries = await db.entry.findMany({
-    where: { userId: req.userId, weekId },
+    where: { userId: req.userId, ...(all ? {} : { weekId }) },
     orderBy: { createdAt: 'desc' },
   });
   res.json(entries.map(serializeEntry));

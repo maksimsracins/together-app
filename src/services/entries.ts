@@ -15,6 +15,10 @@ export function listEntries(weekId?: string) {
   return api<Entry[]>(`/api/entries${qs}`);
 }
 
+export function listAllEntries() {
+  return api<Entry[]>('/api/entries?all=true');
+}
+
 export function listPartnerEntries() {
   return api<Entry[]>('/api/entries/partner');
 }

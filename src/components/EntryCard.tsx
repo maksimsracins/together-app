@@ -6,7 +6,15 @@ import { emotionMeta, entryTypeMeta } from '../data/catalog';
 import { colors, radius, spacing, type } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 
-export function EntryCard({ entry, editable = false }: { entry: Entry; editable?: boolean }) {
+export function EntryCard({
+  entry,
+  editable = false,
+  authorLabel,
+}: {
+  entry: Entry;
+  editable?: boolean;
+  authorLabel?: string;
+}) {
   const typeMeta = entryTypeMeta(entry.type);
   const emo = emotionMeta(entry.emotion);
   const time = new Date(entry.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -22,6 +30,7 @@ export function EntryCard({ entry, editable = false }: { entry: Entry; editable?
         <Text style={styles.icon}>{typeMeta.emoji}</Text>
       </View>
       <View style={{ flex: 1 }}>
+        {authorLabel && <Text style={styles.author}>{authorLabel}</Text>}
         <View style={styles.headerRow}>
           <Text style={styles.type}>{typeMeta.label}</Text>
           <Text style={styles.time}>{time}</Text>
@@ -70,6 +79,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
   },
   icon: { fontSize: 20 },
+  author: { ...type.label, fontSize: 10, color: colors.roseDark, textTransform: 'uppercase', marginBottom: 4 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   type: { ...type.bodySemibold, fontFamily: type.bodySemibold?.fontFamily, color: colors.ink },
   time: { ...type.bodySm, color: colors.inkMuted },
