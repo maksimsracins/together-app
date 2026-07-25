@@ -1,0 +1,189 @@
+import { Router } from 'express';
+import { db } from '../db';
+import { AuthedRequest, requireAuth } from '../auth';
+import { serializeEntry } from '../serializers';
+import { weekIdFor } from '../week';
+import { sendPushNotification } from '../push';
+
+export const entriesRouter = Router();
+
+entriesRouter.use(requireAuth);
+
+const ENTRY_TYPES = ['worry', 'joy', 'gratitude', 'wish', 'thought'];
+const EMOTIONS = ['joy', 'sadness', 'irritation', 'anxiety', 'love', 'hurt', 'calm', 'doubt', 'gratitude'];
+
+interface EntryBody {
+  type?: string;
+  emotion?: string;
+  text?: string;
+  tags?: string[];
+  hasPhoto?: boolean;
+  hasAudio?: boolean;
+}
+
+function validateEntryBody(body: EntryBody): string | null {
+  if (!body.type || !ENTRY_TYPES.includes(body.type)) return 'Некорректный тип записи';
+  if (!body.emotion || !EMOTIONS.includes(body.emotion)) return 'Некорректная эмоция';
+  if (!body.text || !body.text.trim()) return 'Текст записи обязателен';
+  if (body.text.length > 1000) return 'Текст не может быть длиннее 1000 символов';
+  return null;
+}
+
+entriesRouter.get('/', async (req: AuthedRequest, res) => {
+  const weekId = (req.query.weekId as string | undefined) ?? weekIdFor();
+  const entries = await db.entry.findMany({
+    where: { userId: req.userId, weekId },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json(entries.map(serializeEntry));
+});
+
+entriesRouter.get('/partner', async (req: AuthedRequest, res) => {
+  const user = await db.user.findUnique({ where: { id: req.userId } });
+  if (!user?.coupleId) {
+    res.json([]);
+    return;
+  }
+
+  const partner = await db.user.findFirst({ where: { coupleId: user.coupleId, id: { not: user.id } } });
+  if (!partner) {
+    res.json([]);
+    return;
+  }
+
+  // Entries only ever surface to the partner via a generated report — once
+  // that's happened they're meant to stay visible for good (otherwise they'd
+  // only ever be reachable through whatever the *latest* report's window
+  // happens to be, and scroll out of reach the moment a newer report is
+  // generated). "Unlocked" = created at or before the latest report, since
+  // report windows are contiguous from the couple's very first one.
+  const latestReport = await db.weeklyReport.findFirst({
+    where: { coupleId: user.coupleId },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (!latestReport) {
+    res.json([]);
+    return;
+  }
+
+  const entries = await db.entry.findMany({
+    where: { userId: partner.id, createdAt: { lte: latestReport.createdAt } },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json(entries.map(serializeEntry));
+});
+
+entriesRouter.post('/', async (req: AuthedRequest, res) => {
+  const body = req.body as EntryBody;
+  const error = validateEntryBody(body);
+  if (error) {
+    res.status(400).json({ error });
+    return;
+  }
+
+  const user = await db.user.findUnique({ where: { id: req.userId } });
+  const entry = await db.entry.create({
+    data: {
+      userId: req.userId!,
+      coupleId: user?.coupleId ?? null,
+      type: body.type!,
+      emotion: body.emotion!,
+      text: body.text!.trim(),
+      tags: JSON.stringify(body.tags ?? []),
+      hasPhoto: body.hasPhoto ?? false,
+      hasAudio: body.hasAudio ?? false,
+      weekId: weekIdFor(),
+    },
+  });
+
+  res.status(201).json(serializeEntry(entry));
+
+  // Fire-and-forget: never let a notification failure affect the entry response.
+  if (user?.coupleId) {
+    notifyPartnerOfNewEntry(user.coupleId, user.id, user.name).catch((err) =>
+      console.error('Failed to notify partner of new entry', err)
+    );
+  }
+});
+
+async function notifyPartnerOfNewEntry(coupleId: string, authorId: string, authorName: string) {
+  const couple = await db.couple.findUnique({ where: { id: coupleId } });
+  if (!couple?.partnerActivityNotificationsEnabled) return;
+
+  const partner = await db.user.findFirst({ where: { coupleId, id: { not: authorId } } });
+  if (!partner?.pushToken) return;
+
+  await sendPushNotification(partner.pushToken, 'Together', `${authorName} поделился(-ась) чем-то новым 💌`, {
+    type: 'partner_entry',
+  });
+}
+
+entriesRouter.patch('/:id', async (req: AuthedRequest, res) => {
+  const existing = await db.entry.findUnique({ where: { id: req.params.id } });
+  if (!existing || existing.userId !== req.userId) {
+    res.status(404).json({ error: 'Запись не найдена' });
+    return;
+  }
+
+  const body = req.body as EntryBody;
+  const error = validateEntryBody(body);
+  if (error) {
+    res.status(400).json({ error });
+    return;
+  }
+
+  const entry = await db.entry.update({
+    where: { id: existing.id },
+    data: {
+      type: body.type!,
+      emotion: body.emotion!,
+      text: body.text!.trim(),
+      tags: JSON.stringify(body.tags ?? []),
+      hasPhoto: body.hasPhoto ?? false,
+      hasAudio: body.hasAudio ?? false,
+    },
+  });
+
+  res.json(serializeEntry(entry));
+});
+
+entriesRouter.patch('/:id/reaction', async (req: AuthedRequest, res) => {
+  const { emoji } = req.body as { emoji?: string | null };
+  const existing = await db.entry.findUnique({ where: { id: req.params.id } });
+  if (!existing) {
+    res.status(404).json({ error: 'Запись не найдена' });
+    return;
+  }
+
+  // You can always react to your own entry; reacting to someone else's is only
+  // allowed if they're currently your partner (checked live via User.coupleId,
+  // not the entry's own coupleId snapshot — an entry written before pairing
+  // never got one, but it can still surface in today's report).
+  if (existing.userId !== req.userId) {
+    const [me, author] = await Promise.all([
+      db.user.findUnique({ where: { id: req.userId } }),
+      db.user.findUnique({ where: { id: existing.userId } }),
+    ]);
+    const sameCouple = me?.coupleId && author?.coupleId && me.coupleId === author.coupleId;
+    if (!sameCouple) {
+      res.status(404).json({ error: 'Запись не найдена' });
+      return;
+    }
+  }
+
+  const entry = await db.entry.update({
+    where: { id: existing.id },
+    data: { reactionEmoji: emoji ?? null },
+  });
+  res.json({ id: entry.id, reactionEmoji: entry.reactionEmoji });
+});
+
+entriesRouter.delete('/:id', async (req: AuthedRequest, res) => {
+  const existing = await db.entry.findUnique({ where: { id: req.params.id } });
+  if (!existing || existing.userId !== req.userId) {
+    res.status(404).json({ error: 'Запись не найдена' });
+    return;
+  }
+  await db.entry.delete({ where: { id: existing.id } });
+  res.status(204).send();
+});

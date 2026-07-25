@@ -1,0 +1,79 @@
+import { Router } from 'express';
+import { db } from '../db';
+import { AuthedRequest, requireAuth } from '../auth';
+import { serializeUser } from '../serializers';
+
+export const usersRouter = Router();
+
+usersRouter.use(requireAuth);
+
+usersRouter.get('/me', async (req: AuthedRequest, res) => {
+  const user = await db.user.findUnique({ where: { id: req.userId } });
+  if (!user) {
+    res.status(404).json({ error: 'User not found' });
+    return;
+  }
+  res.json(serializeUser(user));
+});
+
+interface UpdateProfileBody {
+  name?: string;
+  avatarEmoji?: string;
+  avatarUri?: string | null;
+  relationshipStartDate?: string | null;
+  loveLanguages?: string[];
+  interests?: string[];
+  timezone?: string;
+  birthdate?: string | null;
+  occupation?: string | null;
+  habits?: string | null;
+  journalReminderEnabled?: boolean;
+}
+
+usersRouter.patch('/me', async (req: AuthedRequest, res) => {
+  const body = req.body as UpdateProfileBody;
+
+  const user = await db.user.update({
+    where: { id: req.userId },
+    data: {
+      ...(body.name !== undefined && { name: body.name }),
+      ...(body.avatarEmoji !== undefined && { avatarEmoji: body.avatarEmoji }),
+      ...(body.avatarUri !== undefined && { avatarUri: body.avatarUri }),
+      ...(body.relationshipStartDate !== undefined && {
+        relationshipStartDate: body.relationshipStartDate ? new Date(body.relationshipStartDate) : null,
+      }),
+      ...(body.loveLanguages !== undefined && { loveLanguages: JSON.stringify(body.loveLanguages) }),
+      ...(body.interests !== undefined && { interests: JSON.stringify(body.interests) }),
+      ...(body.timezone !== undefined && { timezone: body.timezone }),
+      ...(body.birthdate !== undefined && { birthdate: body.birthdate ? new Date(body.birthdate) : null }),
+      ...(body.occupation !== undefined && { occupation: body.occupation }),
+      ...(body.habits !== undefined && { habits: body.habits }),
+      ...(body.journalReminderEnabled !== undefined && { journalReminderEnabled: body.journalReminderEnabled }),
+    },
+  });
+
+  res.json(serializeUser(user));
+});
+
+usersRouter.patch('/me/notifications', async (req: AuthedRequest, res) => {
+  const { pushToken } = req.body as { pushToken?: string | null };
+
+  await db.user.update({
+    where: { id: req.userId },
+    data: { pushToken: pushToken ?? null },
+  });
+
+  res.status(204).send();
+});
+
+usersRouter.get('/me/partner', async (req: AuthedRequest, res) => {
+  const user = await db.user.findUnique({ where: { id: req.userId } });
+  if (!user?.coupleId) {
+    res.json(null);
+    return;
+  }
+  const partner = await db.user.findFirst({
+    where: { coupleId: user.coupleId, id: { not: user.id } },
+  });
+  res.json(partner ? serializeUser(partner) : null);
+});

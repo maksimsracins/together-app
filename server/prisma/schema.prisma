@@ -1,0 +1,105 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  passwordHash          String
+  name                  String
+  avatarEmoji           String    @default("🌸")
+  avatarUri             String?
+  relationshipStartDate DateTime?
+  loveLanguages         String    @default("[]")
+  interests             String    @default("[]")
+  timezone              String    @default("UTC")
+  pushToken             String?
+  birthdate             DateTime?
+  occupation            String?
+  habits                String?
+  journalReminderEnabled  Boolean   @default(true)
+  lastJournalReminderSentAt DateTime?
+  createdAt             DateTime  @default(now())
+
+  coupleId String?
+  couple   Couple? @relation(fields: [coupleId], references: [id])
+
+  entries       Entry[]
+  notifications Notification[]
+}
+
+model Couple {
+  id                                  String   @id @default(cuid())
+  inviteCode                          String   @unique
+  reportWeekday                       Int      @default(1)
+  reportHour                          Int      @default(9)
+  reportTimezone                      String   @default("UTC")
+  reportScheduleChanges               String   @default("[]")
+  notificationsEnabled                Boolean  @default(false)
+  partnerActivityNotificationsEnabled Boolean  @default(false)
+  createdAt                           DateTime @default(now())
+
+  members User[]
+  entries Entry[]
+  reports WeeklyReport[]
+}
+
+model Entry {
+  id            String   @id @default(cuid())
+  type          String
+  emotion       String
+  text          String
+  tags          String   @default("[]")
+  hasPhoto      Boolean  @default(false)
+  hasAudio      Boolean  @default(false)
+  weekId        String
+  reactionEmoji String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  coupleId String?
+  couple   Couple? @relation(fields: [coupleId], references: [id])
+
+  includedInReportId String?
+  includedInReport   WeeklyReport? @relation(fields: [includedInReportId], references: [id])
+
+  @@index([userId, weekId])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  type      String
+  message   String
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+}
+
+model WeeklyReport {
+  id         String   @id @default(cuid())
+  weekId     String
+  weekLabel  String
+  reportJson String
+  createdAt  DateTime @default(now())
+
+  coupleId String
+  couple   Couple @relation(fields: [coupleId], references: [id])
+  entries  Entry[]
+
+  @@index([coupleId])
+}

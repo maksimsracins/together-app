@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "Together",
+    "slug": "together-app",
+    "version": "1.0.0",
+    "scheme": "together",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.maksims.together"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F3E2DE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-font",
+      "expo-splash-screen",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Together использует доступ к фото, чтобы вы могли выбрать фото профиля.",
+          "cameraPermission": "Together использует камеру, чтобы вы могли сделать фото профиля."
+        }
+      ],
+      "expo-secure-store",
+      "expo-notifications"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9dc23f8d-185e-4589-8a7c-f372e20c8bfa"
+      }
+    },
+    "owner": "maksimracins"
+  }
+}

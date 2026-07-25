@@ -1,0 +1,154 @@
+import React, { useState } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
+import { TypePicker } from '../../src/components/TypePicker';
+import { EmotionPicker } from '../../src/components/EmotionPicker';
+import { Button } from '../../src/components/Button';
+import { useAppStore } from '../../src/store/useAppStore';
+import { ApiError } from '../../src/services/http';
+import { EmotionKey, EntryType } from '../../src/types';
+import { colors, radius, spacing, type } from '../../src/theme';
+
+const MAX_LEN = 1000;
+
+export default function NewEntry() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const isEditing = !!id;
+  const entries = useAppStore((s) => s.entries);
+  const addEntry = useAppStore((s) => s.addEntry);
+  const updateEntry = useAppStore((s) => s.updateEntry);
+  const deleteEntry = useAppStore((s) => s.deleteEntry);
+  const existing = isEditing ? entries.find((e) => e.id === id) : undefined;
+
+  const [entryType, setEntryType] = useState<EntryType>(existing?.type ?? 'worry');
+  const [emotion, setEmotion] = useState<EmotionKey | null>(existing?.emotion ?? null);
+  const [text, setText] = useState(existing?.text ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canSave = emotion !== null && text.trim().length > 0;
+
+  const persistEntry = async (finalText: string) => {
+    if (!emotion) return;
+    setSaving(true);
+    setError(null);
+    const payload = { type: entryType, emotion, text: finalText.trim(), tags: [] };
+    try {
+      if (isEditing && id) {
+        await updateEntry(id, payload);
+      } else {
+        await addEntry(payload);
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      router.back();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Не удалось сохранить запись');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!canSave || !emotion) return;
+    await persistEntry(text);
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+    setSaving(true);
+    try {
+      await deleteEntry(id);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      router.back();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Не удалось удалить запись');
+      setSaving(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <View style={styles.header}>
+        <Text style={styles.title}>{isEditing ? 'Изменить запись' : 'Новая запись'}</Text>
+        <View style={{ flexDirection: 'row' }}>
+          {isEditing && (
+            <Pressable onPress={handleDelete} style={[styles.closeBtn, { marginRight: spacing.sm }]} hitSlop={10}>
+              <Ionicons name="trash-outline" size={18} color={colors.danger} />
+            </Pressable>
+          )}
+          <Pressable onPress={() => router.back()} style={styles.closeBtn} hitSlop={10}>
+            <Ionicons name="close" size={20} color={colors.ink} />
+          </Pressable>
+        </View>
+      </View>
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.label}>Тип записи</Text>
+        <TypePicker value={entryType} onChange={setEntryType} />
+
+        <Text style={[styles.label, { marginTop: spacing.lg }]}>Эмоция</Text>
+        <EmotionPicker value={emotion} onChange={setEmotion} />
+
+        <Text style={[styles.label, { marginTop: spacing.lg }]}>Описание</Text>
+        <View style={styles.textWrap}>
+          <TextInput
+            multiline
+            maxLength={MAX_LEN}
+            placeholder="Расскажите, что вы чувствуете… это увидите только вы"
+            placeholderTextColor={colors.inkMuted}
+            value={text}
+            onChangeText={setText}
+            style={styles.textInput}
+            textAlignVertical="top"
+          />
+          <Text style={styles.counter}>{text.length}/{MAX_LEN}</Text>
+        </View>
+
+        <Text style={styles.privacyNote}>🔒 Запись увидите только вы — до недельного отчёта</Text>
+
+        {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
+
+        <Button
+          label={isEditing ? 'Сохранить изменения' : 'Сохранить'}
+          onPress={handleSave}
+          disabled={!canSave || saving}
+          loading={saving}
+          style={{ marginTop: spacing.lg }}
+        />
+      </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.cream },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.xl, paddingVertical: spacing.md,
+  },
+  title: { ...type.h3, color: colors.ink },
+  closeBtn: {
+    width: 36, height: 36, borderRadius: 18, backgroundColor: colors.card,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xxxl },
+  label: { ...type.label, color: colors.inkMuted, textTransform: 'uppercase', marginBottom: spacing.md },
+  textWrap: {
+    backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border,
+    padding: spacing.lg,
+  },
+  textInput: { ...type.bodyLg, color: colors.ink, minHeight: 120 },
+  counter: { ...type.bodySm, color: colors.inkMuted, textAlign: 'right', marginTop: spacing.xs },
+  privacyNote: { ...type.bodySm, color: colors.inkMuted, textAlign: 'center', marginTop: spacing.xl },
+  errorText: { ...type.bodySm, color: colors.danger, textAlign: 'center', marginTop: spacing.lg },
+});
