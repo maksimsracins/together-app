@@ -20,7 +20,6 @@ export default function Report() {
   const partner = useAuthStore((s) => s.partner);
   const {
     weeklyReport: r,
-    togglePlanItem,
     setEntryReaction,
     generateReport,
     reportStatus,
@@ -94,7 +93,6 @@ export default function Report() {
           myName={user.name}
           partnerName={partner?.name ?? null}
           onReact={(id, emoji) => setEntryReaction(id, emoji)}
-          onTogglePlanItem={togglePlanItem}
         />
       )}
     </Screen>

@@ -36,14 +36,7 @@ export interface GenerateReportRequest {
   previousNarrative?: string;
 }
 
-export interface PlanItem {
-  emoji: string;
-  title: string;
-}
-
 export interface GenerateReportResponse {
   narrative: string;
   narrativeDeep: string;
-  planA: PlanItem[];
-  planB: PlanItem[];
 }

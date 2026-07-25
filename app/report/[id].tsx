@@ -29,13 +29,6 @@ export default function ReportHistoryDetail() {
           partnerEntries: envelope.report.partnerEntries,
           narrative: envelope.report.narrative,
           narrativeDeep: envelope.report.narrativeDeep,
-          myPlan: envelope.report.myPlan.map((item, i) => ({
-            id: `${id}-${i}`,
-            emoji: item.emoji,
-            title: item.title,
-            completed: false,
-          })),
-          partnerPlan: envelope.report.partnerPlan,
         });
       })
       .catch(() => setError('Не удалось загрузить отчёт'));
@@ -49,14 +42,6 @@ export default function ReportHistoryDetail() {
         list.map((e) => (e.id === entryId ? { ...e, reactionEmoji: updated.reactionEmoji } : e));
       return { ...prev, myEntries: apply(prev.myEntries), partnerEntries: apply(prev.partnerEntries) };
     });
-  };
-
-  const handleTogglePlanItem = (itemId: string) => {
-    setReport((prev) =>
-      prev
-        ? { ...prev, myPlan: prev.myPlan.map((r) => (r.id === itemId ? { ...r, completed: !r.completed } : r)) }
-        : prev
-    );
   };
 
   return (
@@ -86,7 +71,6 @@ export default function ReportHistoryDetail() {
             myName={user.name}
             partnerName={partner?.name ?? null}
             onReact={handleReact}
-            onTogglePlanItem={handleTogglePlanItem}
           />
         )}
       </ScrollView>

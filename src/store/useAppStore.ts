@@ -37,7 +37,6 @@ interface AppState {
   addEntry: (input: NewEntryInput) => Promise<void>;
   updateEntry: (id: string, input: NewEntryInput) => Promise<void>;
   deleteEntry: (id: string) => Promise<void>;
-  togglePlanItem: (id: string) => void;
   setEntryReaction: (entryId: string, emoji: string | null) => Promise<void>;
   loadLatestReport: () => Promise<void>;
   generateReport: () => Promise<void>;
@@ -52,13 +51,6 @@ function buildWeeklyReport(envelope: reportService.ReportEnvelope): WeeklyReport
     partnerEntries: r.partnerEntries,
     narrative: r.narrative,
     narrativeDeep: r.narrativeDeep,
-    myPlan: r.myPlan.map((item, i) => ({
-      id: `${envelope.weekId}-${i}`,
-      emoji: item.emoji,
-      title: item.title,
-      completed: false,
-    })),
-    partnerPlan: r.partnerPlan,
   };
 }
 
@@ -111,16 +103,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     await entriesService.deleteEntry(id);
     set((state) => ({ entries: state.entries.filter((e) => e.id !== id) }));
   },
-
-  togglePlanItem: (id) =>
-    set((state) => ({
-      weeklyReport: state.weeklyReport && {
-        ...state.weeklyReport,
-        myPlan: state.weeklyReport.myPlan.map((r) =>
-          r.id === id ? { ...r, completed: !r.completed } : r
-        ),
-      },
-    })),
 
   setEntryReaction: async (entryId, emoji) => {
     const updated = await entriesService.setEntryReaction(entryId, emoji);

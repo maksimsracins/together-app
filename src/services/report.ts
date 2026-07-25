@@ -4,8 +4,6 @@ import { EmotionKey, WeeklyReportEntry } from '../types';
 export interface PerspectiveReport {
   narrative: string;
   narrativeDeep: string;
-  myPlan: { emoji: string; title: string }[];
-  partnerPlan: { emoji: string; title: string }[];
   myEntries: WeeklyReportEntry[];
   partnerEntries: WeeklyReportEntry[];
 }

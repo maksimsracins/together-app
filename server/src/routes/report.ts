@@ -139,8 +139,6 @@ export async function runReportGeneration(ctx: CoupleCtx) {
     report: {
       narrative: result.narrative,
       narrativeDeep: result.narrativeDeep,
-      myPlan: isA ? result.planA : result.planB,
-      partnerPlan: isA ? result.planB : result.planA,
       myEntries: toDisplayEntries(myEntries),
       partnerEntries: toDisplayEntries(partnerEntries),
     },
@@ -178,7 +176,7 @@ reportRouter.get('/latest', async (req: AuthedRequest, res) => {
     res.json(null);
     return;
   }
-  const { couple, me, partner, isA } = ctx;
+  const { couple, me, partner } = ctx;
 
   const latest = await db.weeklyReport.findFirst({
     where: { coupleId: couple.id },
@@ -198,8 +196,6 @@ reportRouter.get('/latest', async (req: AuthedRequest, res) => {
     report: {
       narrative: parsed.narrative,
       narrativeDeep: parsed.narrativeDeep,
-      myPlan: isA ? parsed.planA : parsed.planB,
-      partnerPlan: isA ? parsed.planB : parsed.planA,
       myEntries: toDisplayEntries(myEntries),
       partnerEntries: toDisplayEntries(partnerEntries),
     },
@@ -239,7 +235,7 @@ reportRouter.get('/history/:id', async (req: AuthedRequest, res) => {
     res.status(404).json({ error: 'Отчёт не найден' });
     return;
   }
-  const { couple, me, partner, isA } = ctx;
+  const { couple, me, partner } = ctx;
 
   const report = await db.weeklyReport.findFirst({ where: { id: req.params.id, coupleId: couple.id } });
   if (!report) {
@@ -256,8 +252,6 @@ reportRouter.get('/history/:id', async (req: AuthedRequest, res) => {
     report: {
       narrative: parsed.narrative,
       narrativeDeep: parsed.narrativeDeep,
-      myPlan: isA ? parsed.planA : parsed.planB,
-      partnerPlan: isA ? parsed.planB : parsed.planA,
       myEntries: toDisplayEntries(myEntries),
       partnerEntries: toDisplayEntries(partnerEntries),
     },

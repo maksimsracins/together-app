@@ -53,18 +53,6 @@ export interface AppUser {
   coupleId?: string | null;
 }
 
-export interface Recommendation {
-  id: string;
-  emoji: string;
-  title: string;
-  completed: boolean;
-}
-
-export interface PlanItem {
-  emoji: string;
-  title: string;
-}
-
 export interface WeeklyReportEntry {
   id: string;
   type: EntryType;
@@ -80,6 +68,4 @@ export interface WeeklyReport {
   partnerEntries: WeeklyReportEntry[];
   narrative: string;
   narrativeDeep: string;
-  myPlan: Recommendation[];
-  partnerPlan: PlanItem[];
 }

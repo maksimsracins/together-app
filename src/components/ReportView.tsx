@@ -3,7 +3,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from './Card';
 import { emotionMeta, entryTypeMeta } from '../data/catalog';
-import { PlanItem, Recommendation, WeeklyReportEntry } from '../types';
+import { WeeklyReportEntry } from '../types';
 import { colors, radius, shadow, spacing, type } from '../theme';
 import { formatDayLabel } from '../utils/week';
 
@@ -18,8 +18,6 @@ export interface ReportViewData {
   partnerEntries: WeeklyReportEntry[];
   narrative: string;
   narrativeDeep: string;
-  myPlan: Recommendation[];
-  partnerPlan: PlanItem[];
 }
 
 export function ReportView({
@@ -27,13 +25,11 @@ export function ReportView({
   myName,
   partnerName,
   onReact,
-  onTogglePlanItem,
 }: {
   report: ReportViewData;
   myName: string;
   partnerName: string | null;
   onReact: (entryId: string, emoji: string | null) => void;
-  onTogglePlanItem: (id: string) => void;
 }) {
   // Centralized so opening one bubble's reaction picker — or tapping anywhere
   // else on the screen — always closes any other one that was open.
@@ -120,35 +116,6 @@ export function ReportView({
               <Text style={styles.deepAnalysisText}>{report.narrativeDeep}</Text>
             </View>
           </Animated.View>
-        )}
-      </Card>
-
-      <Card style={styles.summaryCard}>
-        <View style={styles.summaryHeader}>
-          <Text style={styles.summaryHeaderEmoji}>🌱</Text>
-          <Text style={styles.summaryHeaderTitle}>Твой план на неделю</Text>
-        </View>
-        {report.myPlan.map((item) => (
-          <Pressable key={item.id} style={styles.recRow} onPress={() => onTogglePlanItem(item.id)}>
-            <View style={[styles.checkbox, item.completed && styles.checkboxDone]}>
-              {item.completed && <Ionicons name="checkmark" size={14} color={colors.white} />}
-            </View>
-            <Text style={styles.recEmoji}>{item.emoji}</Text>
-            <Text style={[styles.recText, item.completed && styles.recTextDone]}>{item.title}</Text>
-          </Pressable>
-        ))}
-
-        {partnerName && report.partnerPlan.length > 0 && (
-          <>
-            <View style={styles.summaryDivider} />
-            <Text style={styles.recSectionTitle}>План {partnerName}</Text>
-            {report.partnerPlan.map((item, i) => (
-              <View key={i} style={styles.recRow}>
-                <Text style={styles.recEmoji}>{item.emoji}</Text>
-                <Text style={styles.recTextMuted}>{item.title}</Text>
-              </View>
-            ))}
-          </>
         )}
       </Card>
     </Pressable>
@@ -325,17 +292,5 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3, borderLeftColor: colors.rose,
   },
   deepAnalysisText: { ...type.body, color: colors.inkSoft, lineHeight: 22 },
-  summaryDivider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.lg },
-  recSectionTitle: { ...type.label, color: colors.inkMuted, textTransform: 'uppercase', marginBottom: spacing.sm },
-  recRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm },
-  checkbox: {
-    width: 24, height: 24, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border,
-    alignItems: 'center', justifyContent: 'center', marginRight: spacing.md,
-  },
-  checkboxDone: { backgroundColor: colors.sage, borderColor: colors.sage },
-  recEmoji: { fontSize: 17, marginRight: spacing.sm },
-  recText: { ...type.body, color: colors.ink, flex: 1 },
-  recTextDone: { color: colors.inkMuted, textDecorationLine: 'line-through' },
-  recTextMuted: { ...type.body, color: colors.inkSoft, flex: 1 },
   emptyText: { ...type.body, color: colors.inkMuted, textAlign: 'center' },
 });
