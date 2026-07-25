@@ -8,7 +8,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { TypePicker } from '../../src/components/TypePicker';
 import { EmotionPicker } from '../../src/components/EmotionPicker';
 import { Button } from '../../src/components/Button';
-import { Card } from '../../src/components/Card';
 import { useAppStore } from '../../src/store/useAppStore';
 import { ApiError } from '../../src/services/http';
 import { listAllEntries } from '../../src/services/entries';
@@ -207,7 +206,7 @@ export default function NewEntry() {
           )
         )}
 
-        <Card tone="sand" style={styles.tagCard}>
+        <View style={styles.tagSection}>
           <Text style={styles.label}>Тип записи</Text>
           <View pointerEvents={locked ? 'none' : 'auto'} style={locked && styles.disabled}>
             <TypePicker value={entryType} onChange={setEntryType} />
@@ -217,7 +216,7 @@ export default function NewEntry() {
           <View pointerEvents={locked ? 'none' : 'auto'} style={locked && styles.disabled}>
             <EmotionPicker value={emotion} onChange={setEmotion} />
           </View>
-        </Card>
+        </View>
 
         {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
 
@@ -269,7 +268,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center',
   },
   privacyNote: { ...type.bodySm, color: colors.inkMuted, marginTop: spacing.sm },
-  tagCard: { marginTop: spacing.xl },
+  tagSection: {
+    marginTop: spacing.xl, paddingTop: spacing.lg,
+    borderTopWidth: 1, borderTopColor: colors.border,
+  },
   errorText: { ...type.bodySm, color: colors.danger, textAlign: 'center', marginTop: spacing.lg },
   lockedNote: {
     ...type.bodySm, color: colors.inkSoft, backgroundColor: colors.card, borderRadius: radius.md,
