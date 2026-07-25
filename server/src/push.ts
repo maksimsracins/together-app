@@ -9,6 +9,8 @@ export async function sendPushNotification(token: string, title: string, body: s
     const ticket = json?.data;
     if (ticket?.status === 'error') {
       console.error('Expo push ticket error', ticket.message, ticket.details);
+    } else {
+      console.log(`Push sent to ${token.slice(0, 24)}... "${title}: ${body}" -> ticket ${ticket?.status}`);
     }
   } catch (err) {
     console.error('Failed to send push notification', err);

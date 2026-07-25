@@ -95,8 +95,12 @@ type CoupleCtx = NonNullable<Awaited<ReturnType<typeof ensureCoupleContext>>>;
 // regardless of whether it was generated automatically or by one of them
 // tapping "Обновить".
 export async function notifyCoupleReportReady(couple: Couple, me: User, partner: User | null) {
-  if (!couple.notificationsEnabled) return;
+  if (!couple.notificationsEnabled) {
+    console.log(`Skipping report-ready push for couple ${couple.id}: notificationsEnabled is off`);
+    return;
+  }
   const recipients = [me, partner].filter((u): u is User => !!u?.pushToken);
+  console.log(`Sending report-ready push for couple ${couple.id} to ${recipients.length} recipient(s)`);
   await Promise.all(
     recipients.map((u) => sendPushNotification(u.pushToken!, 'Together', 'Ваш новый отчёт готов 💞', { type: 'report_ready' }))
   );

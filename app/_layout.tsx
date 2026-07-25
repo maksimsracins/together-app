@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Notifications from 'expo-notifications';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   useFonts,
@@ -19,6 +20,19 @@ import { colors } from '../src/theme';
 import { useAuthStore } from '../src/store/useAuthStore';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Without this, a push that arrives while the app is open in the foreground
+// (the common case for two partners testing side by side) is delivered
+// silently -- no banner, no sound -- which looks indistinguishable from the
+// notification never having arrived at all.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({

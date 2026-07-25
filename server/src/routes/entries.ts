@@ -108,10 +108,16 @@ entriesRouter.post('/', async (req: AuthedRequest, res) => {
 
 async function notifyPartnerOfNewEntry(coupleId: string, authorId: string, authorName: string) {
   const couple = await db.couple.findUnique({ where: { id: coupleId } });
-  if (!couple?.partnerActivityNotificationsEnabled) return;
+  if (!couple?.partnerActivityNotificationsEnabled) {
+    console.log(`Skipping partner-entry push for couple ${coupleId}: partnerActivityNotificationsEnabled is off`);
+    return;
+  }
 
   const partner = await db.user.findFirst({ where: { coupleId, id: { not: authorId } } });
-  if (!partner?.pushToken) return;
+  if (!partner?.pushToken) {
+    console.log(`Skipping partner-entry push for couple ${coupleId}: partner has no pushToken`);
+    return;
+  }
 
   await sendPushNotification(partner.pushToken, 'Together', `${authorName} поделился(-ась) чем-то новым 💌`, {
     type: 'partner_entry',
