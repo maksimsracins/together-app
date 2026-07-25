@@ -8,16 +8,13 @@ import { Card } from '../../src/components/Card';
 import { EntryCard } from '../../src/components/EntryCard';
 import { Button } from '../../src/components/Button';
 import { useAppStore } from '../../src/store/useAppStore';
-import { useAuthStore } from '../../src/store/useAuthStore';
 import { listAllEntries } from '../../src/services/entries';
 import { Entry } from '../../src/types';
 import { colors, spacing, type } from '../../src/theme';
 import { formatDayLabel } from '../../src/utils/week';
 
-type TimelineEntry = Entry & { mine: boolean };
-
-function groupByDay(list: TimelineEntry[]) {
-  const map = new Map<string, TimelineEntry[]>();
+function groupByDay(list: Entry[]) {
+  const map = new Map<string, Entry[]>();
   list.forEach((e) => {
     const key = formatDayLabel(new Date(e.createdAt));
     map.set(key, [...(map.get(key) ?? []), e]);
@@ -25,40 +22,30 @@ function groupByDay(list: TimelineEntry[]) {
   return Array.from(map.entries());
 }
 
-function mergeSortDesc(mine: Entry[], partner: Entry[]): TimelineEntry[] {
-  return [...mine.map((e) => ({ ...e, mine: true })), ...partner.map((e) => ({ ...e, mine: false }))].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
-}
-
 const isToday = (e: Entry) => isSameDay(new Date(e.createdAt), new Date());
 
 export default function History() {
   const entries = useAppStore((s) => s.entries);
-  const partnerEntries = useAppStore((s) => s.partnerEntries);
-  const partner = useAuthStore((s) => s.partner);
 
   const [olderExpanded, setOlderExpanded] = useState(false);
   const [olderMine, setOlderMine] = useState<Entry[] | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [olderError, setOlderError] = useState<string | null>(null);
 
-  const currentTimeline = useMemo(() => {
-    const partnerToday = partnerEntries.filter(isToday);
-    return mergeSortDesc(entries.filter(isToday), partnerToday);
-  }, [entries, partnerEntries]);
+  const todayEntries = useMemo(() => entries.filter(isToday), [entries]);
 
-  const olderTimeline = useMemo(() => {
+  const olderEntries = useMemo(() => {
     // Rest of the current week is already loaded (`entries` is this week's
     // entries) — only the truly older stuff needs the lazy full fetch.
-    const mineRestOfWeek = entries.filter((e) => !isToday(e));
-    const mineOlder = (olderMine ?? []).filter((e) => !entries.some((cur) => cur.id === e.id));
-    const partnerNotToday = partnerEntries.filter((e) => !isToday(e));
-    return mergeSortDesc([...mineRestOfWeek, ...mineOlder], partnerNotToday);
-  }, [entries, olderMine, partnerEntries]);
+    const restOfWeek = entries.filter((e) => !isToday(e));
+    const older = (olderMine ?? []).filter((e) => !entries.some((cur) => cur.id === e.id));
+    return [...restOfWeek, ...older].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [entries, olderMine]);
 
-  const groupedCurrent = useMemo(() => groupByDay(currentTimeline), [currentTimeline]);
-  const groupedOlder = useMemo(() => groupByDay(olderTimeline), [olderTimeline]);
+  const groupedToday = useMemo(() => groupByDay(todayEntries), [todayEntries]);
+  const groupedOlder = useMemo(() => groupByDay(olderEntries), [olderEntries]);
 
   const handleToggleOlder = async () => {
     if (olderExpanded) {
@@ -79,27 +66,23 @@ export default function History() {
     }
   };
 
-  const authorLabel = (mine: boolean) => (partner ? (mine ? 'Вы' : partner.name) : undefined);
-
   return (
     <Screen>
       <Text style={styles.title}>Мои записи</Text>
-      <Text style={styles.subtitle}>
-        {partner ? 'Сегодня — ваши записи и записи партнёра вместе' : 'Ваши записи за сегодня'}
-      </Text>
+      <Text style={styles.subtitle}>Ваши записи за сегодня</Text>
 
-      {currentTimeline.length === 0 ? (
+      {todayEntries.length === 0 ? (
         <Card style={{ alignItems: 'center', marginTop: spacing.lg }}>
           <Text style={{ fontSize: 28, marginBottom: spacing.sm }}>🌱</Text>
           <Text style={styles.emptyText}>Записей пока нет</Text>
           <Button label="Добавить запись" onPress={() => router.push('/entry/new')} style={{ marginTop: spacing.lg }} />
         </Card>
       ) : (
-        groupedCurrent.map(([day, items]) => (
+        groupedToday.map(([day, items]) => (
           <View key={day} style={{ marginBottom: spacing.lg }}>
             <Text style={styles.dayLabel}>{day}</Text>
             {items.map((e) => (
-              <EntryCard key={e.id} entry={e} editable={e.mine} authorLabel={authorLabel(e.mine)} mine={partner ? e.mine : undefined} />
+              <EntryCard key={e.id} entry={e} editable />
             ))}
           </View>
         ))
@@ -124,7 +107,7 @@ export default function History() {
             <View key={day} style={{ marginBottom: spacing.lg }}>
               <Text style={styles.dayLabel}>{day}</Text>
               {items.map((e) => (
-                <EntryCard key={e.id} entry={e} editable={e.mine} authorLabel={authorLabel(e.mine)} mine={partner ? e.mine : undefined} />
+                <EntryCard key={e.id} entry={e} editable />
               ))}
             </View>
           ))
