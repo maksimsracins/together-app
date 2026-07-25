@@ -12,13 +12,15 @@ entriesRouter.use(requireAuth);
 const ENTRY_TYPES = ['worry', 'joy', 'gratitude', 'wish', 'thought'];
 const EMOTIONS = ['joy', 'sadness', 'irritation', 'anxiety', 'love', 'hurt', 'calm', 'doubt', 'gratitude'];
 
+const MAX_PHOTO_DATA_URI_LENGTH = 5 * 1024 * 1024; // ~3.5MB of actual image data, base64-inflated
+
 interface EntryBody {
   type?: string;
   emotion?: string;
   text?: string;
   tags?: string[];
-  hasPhoto?: boolean;
   hasAudio?: boolean;
+  photoUri?: string | null;
 }
 
 function validateEntryBody(body: EntryBody): string | null {
@@ -26,6 +28,10 @@ function validateEntryBody(body: EntryBody): string | null {
   if (!body.emotion || !EMOTIONS.includes(body.emotion)) return 'Некорректная эмоция';
   if (!body.text || !body.text.trim()) return 'Текст записи обязателен';
   if (body.text.length > 1000) return 'Текст не может быть длиннее 1000 символов';
+  if (body.photoUri) {
+    if (!body.photoUri.startsWith('data:image/')) return 'Некорректный формат фото';
+    if (body.photoUri.length > MAX_PHOTO_DATA_URI_LENGTH) return 'Фото слишком большое';
+  }
   return null;
 }
 
@@ -91,8 +97,9 @@ entriesRouter.post('/', async (req: AuthedRequest, res) => {
       emotion: body.emotion!,
       text: body.text!.trim(),
       tags: JSON.stringify(body.tags ?? []),
-      hasPhoto: body.hasPhoto ?? false,
+      hasPhoto: !!body.photoUri,
       hasAudio: body.hasAudio ?? false,
+      photoUri: body.photoUri ?? null,
       weekId: weekIdFor(),
     },
   });
@@ -152,8 +159,9 @@ entriesRouter.patch('/:id', async (req: AuthedRequest, res) => {
       emotion: body.emotion!,
       text: body.text!.trim(),
       tags: JSON.stringify(body.tags ?? []),
-      hasPhoto: body.hasPhoto ?? false,
+      hasPhoto: !!body.photoUri,
       hasAudio: body.hasAudio ?? false,
+      photoUri: body.photoUri ?? null,
     },
   });
 

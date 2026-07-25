@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { isSameWeek } from 'date-fns';
+import { isSameDay } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/components/Screen';
 import { Card } from '../../src/components/Card';
@@ -31,7 +31,7 @@ function mergeSortDesc(mine: Entry[], partner: Entry[]): TimelineEntry[] {
   );
 }
 
-const isCurrentWeek = (e: Entry) => isSameWeek(new Date(e.createdAt), new Date(), { weekStartsOn: 1 });
+const isToday = (e: Entry) => isSameDay(new Date(e.createdAt), new Date());
 
 export default function History() {
   const entries = useAppStore((s) => s.entries);
@@ -44,16 +44,18 @@ export default function History() {
   const [olderError, setOlderError] = useState<string | null>(null);
 
   const currentTimeline = useMemo(() => {
-    const partnerThisWeek = partnerEntries.filter(isCurrentWeek);
-    return mergeSortDesc(entries, partnerThisWeek);
+    const partnerToday = partnerEntries.filter(isToday);
+    return mergeSortDesc(entries.filter(isToday), partnerToday);
   }, [entries, partnerEntries]);
 
   const olderTimeline = useMemo(() => {
-    if (olderMine === null) return [];
-    const mineOlder = olderMine.filter((e) => !isCurrentWeek(e));
-    const partnerOlder = partnerEntries.filter((e) => !isCurrentWeek(e));
-    return mergeSortDesc(mineOlder, partnerOlder);
-  }, [olderMine, partnerEntries]);
+    // Rest of the current week is already loaded (`entries` is this week's
+    // entries) — only the truly older stuff needs the lazy full fetch.
+    const mineRestOfWeek = entries.filter((e) => !isToday(e));
+    const mineOlder = (olderMine ?? []).filter((e) => !entries.some((cur) => cur.id === e.id));
+    const partnerNotToday = partnerEntries.filter((e) => !isToday(e));
+    return mergeSortDesc([...mineRestOfWeek, ...mineOlder], partnerNotToday);
+  }, [entries, olderMine, partnerEntries]);
 
   const groupedCurrent = useMemo(() => groupByDay(currentTimeline), [currentTimeline]);
   const groupedOlder = useMemo(() => groupByDay(olderTimeline), [olderTimeline]);
@@ -81,9 +83,9 @@ export default function History() {
 
   return (
     <Screen>
-      <Text style={styles.title}>История</Text>
+      <Text style={styles.title}>Мои записи</Text>
       <Text style={styles.subtitle}>
-        {partner ? 'Ваши записи и записи партнёра — вместе, по дням' : 'Ваши записи по дням'}
+        {partner ? 'Сегодня — ваши записи и записи партнёра вместе' : 'Ваши записи за сегодня'}
       </Text>
 
       {currentTimeline.length === 0 ? (

@@ -60,6 +60,7 @@ model Entry {
   tags          String   @default("[]")
   hasPhoto      Boolean  @default(false)
   hasAudio      Boolean  @default(false)
+  photoUri      String?
   weekId        String
   reactionEmoji String?
   createdAt     DateTime @default(now())

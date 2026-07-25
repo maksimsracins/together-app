@@ -32,6 +32,7 @@ export interface Entry {
   tags: string[];
   hasPhoto: boolean;
   hasAudio: boolean;
+  photoUri: string | null;
   weekId?: string;
   includedInReportId: string | null;
   createdAt: string; // ISO

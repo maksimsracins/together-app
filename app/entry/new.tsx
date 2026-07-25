@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { TypePicker } from '../../src/components/TypePicker';
 import { EmotionPicker } from '../../src/components/EmotionPicker';
@@ -27,16 +28,41 @@ export default function NewEntry() {
   const [entryType, setEntryType] = useState<EntryType>(existing?.type ?? 'worry');
   const [emotion, setEmotion] = useState<EmotionKey | null>(existing?.emotion ?? null);
   const [text, setText] = useState(existing?.text ?? '');
+  const [photoUri, setPhotoUri] = useState<string | null>(existing?.photoUri ?? null);
+  const [pickingPhoto, setPickingPhoto] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const canSave = emotion !== null && text.trim().length > 0;
 
+  const handlePickPhoto = async () => {
+    setError(null);
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      setError('Нет доступа к галерее');
+      return;
+    }
+    setPickingPhoto(true);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.5,
+        base64: true,
+      });
+      const asset = result.assets?.[0];
+      if (!result.canceled && asset?.base64) {
+        setPhotoUri(`data:image/jpeg;base64,${asset.base64}`);
+      }
+    } finally {
+      setPickingPhoto(false);
+    }
+  };
+
   const persistEntry = async (finalText: string) => {
     if (!emotion) return;
     setSaving(true);
     setError(null);
-    const payload = { type: entryType, emotion, text: finalText.trim(), tags: [] };
+    const payload = { type: entryType, emotion, text: finalText.trim(), tags: [], photoUri };
     try {
       if (isEditing && id) {
         await updateEntry(id, payload);
@@ -125,6 +151,24 @@ export default function NewEntry() {
           {!locked && <Text style={styles.counter}>{text.length}/{MAX_LEN}</Text>}
         </View>
 
+        {photoUri ? (
+          <View style={styles.photoWrap}>
+            <Image source={{ uri: photoUri }} style={styles.photo} />
+            {!locked && (
+              <Pressable style={styles.photoRemoveBtn} onPress={() => setPhotoUri(null)} hitSlop={10}>
+                <Ionicons name="close" size={16} color={colors.white} />
+              </Pressable>
+            )}
+          </View>
+        ) : (
+          !locked && (
+            <Pressable style={styles.photoAddBtn} onPress={handlePickPhoto} disabled={pickingPhoto}>
+              <Ionicons name="image-outline" size={20} color={colors.roseDark} />
+              <Text style={styles.photoAddText}>{pickingPhoto ? 'Загрузка…' : 'Добавить фото'}</Text>
+            </Pressable>
+          )
+        )}
+
         {!locked && <Text style={styles.privacyNote}>🔒 Запись увидите только вы — до недельного отчёта</Text>}
 
         {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
@@ -163,6 +207,18 @@ const styles = StyleSheet.create({
   },
   textInput: { ...type.bodyLg, color: colors.ink, minHeight: 120 },
   counter: { ...type.bodySm, color: colors.inkMuted, textAlign: 'right', marginTop: spacing.xs },
+  photoAddBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, borderStyle: 'dashed',
+    paddingVertical: spacing.md, marginTop: spacing.lg,
+  },
+  photoAddText: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.roseDark, marginLeft: spacing.sm },
+  photoWrap: { marginTop: spacing.lg },
+  photo: { width: '100%', height: 200, borderRadius: radius.md, backgroundColor: colors.card },
+  photoRemoveBtn: {
+    position: 'absolute', top: spacing.sm, right: spacing.sm, width: 28, height: 28, borderRadius: 14,
+    backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center',
+  },
   privacyNote: { ...type.bodySm, color: colors.inkMuted, textAlign: 'center', marginTop: spacing.xl },
   errorText: { ...type.bodySm, color: colors.danger, textAlign: 'center', marginTop: spacing.lg },
   lockedNote: {

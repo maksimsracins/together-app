@@ -10,7 +10,7 @@ interface NewEntryInput {
   emotion: EmotionKey;
   text: string;
   tags: string[];
-  hasPhoto?: boolean;
+  photoUri?: string | null;
   hasAudio?: boolean;
 }
 

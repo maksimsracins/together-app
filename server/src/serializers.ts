@@ -39,6 +39,7 @@ export function serializeEntry(entry: Entry) {
     tags: JSON.parse(entry.tags) as string[],
     hasPhoto: entry.hasPhoto,
     hasAudio: entry.hasAudio,
+    photoUri: entry.photoUri,
     weekId: entry.weekId,
     includedInReportId: entry.includedInReportId,
     createdAt: entry.createdAt.toISOString(),

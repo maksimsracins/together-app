@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Entry } from '../types';
 import { emotionMeta, entryTypeMeta } from '../data/catalog';
@@ -45,6 +45,7 @@ export function EntryCard({
         <Text style={styles.text} numberOfLines={4}>
           {entry.text}
         </Text>
+        {entry.photoUri && <Image source={{ uri: entry.photoUri }} style={styles.photo} />}
         <View style={styles.footerRow}>
           <Text style={styles.emotionBadge}>
             {emo.emoji} {emo.label}
@@ -54,7 +55,6 @@ export function EntryCard({
               🔒 В отчёте
             </Text>
           )}
-          {entry.hasPhoto && <Ionicons name="image-outline" size={15} color={colors.inkMuted} style={styles.metaIcon} />}
           {entry.hasAudio && <Ionicons name="mic-outline" size={15} color={colors.inkMuted} style={styles.metaIcon} />}
           {entry.tags.map((tag) => (
             <Text key={tag} style={styles.tag}>
@@ -91,6 +91,7 @@ const styles = StyleSheet.create({
   type: { ...type.bodySemibold, fontFamily: type.bodySemibold?.fontFamily, color: colors.ink },
   time: { ...type.bodySm, color: colors.inkMuted },
   text: { ...type.body, color: colors.inkSoft },
+  photo: { width: '100%', height: 140, borderRadius: radius.md, marginTop: spacing.sm, backgroundColor: colors.sandMist },
   footerRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm, flexWrap: 'wrap' },
   emotionBadge: { ...type.bodySm, color: colors.roseDark, marginRight: spacing.sm },
   lockedBadge: { ...type.bodySm, color: colors.inkMuted, marginRight: spacing.sm },
