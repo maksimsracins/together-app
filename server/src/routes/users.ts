@@ -8,6 +8,7 @@ export const usersRouter = Router();
 usersRouter.use(requireAuth);
 
 const MAX_AVATAR_DATA_URI_LENGTH = 5 * 1024 * 1024; // ~3.5MB of actual image data, base64-inflated
+const MAX_NAME_LENGTH = 20;
 
 usersRouter.get('/me', async (req: AuthedRequest, res) => {
   const user = await db.user.findUnique({ where: { id: req.userId } });
@@ -34,6 +35,11 @@ interface UpdateProfileBody {
 
 usersRouter.patch('/me', async (req: AuthedRequest, res) => {
   const body = req.body as UpdateProfileBody;
+
+  if (body.name !== undefined && body.name.trim().length > MAX_NAME_LENGTH) {
+    res.status(400).json({ error: `Имя не может быть длиннее ${MAX_NAME_LENGTH} символов` });
+    return;
+  }
 
   if (body.avatarUri) {
     if (!body.avatarUri.startsWith('data:image/')) {

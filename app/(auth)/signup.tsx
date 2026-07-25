@@ -45,7 +45,7 @@ export default function Signup() {
       </View>
 
       <View style={{ marginTop: spacing.lg }}>
-        <TextField label="Имя" placeholder="Как вас называть?" value={name} onChangeText={setName} />
+        <TextField label="Имя" placeholder="Как вас называть?" value={name} onChangeText={setName} maxLength={20} />
         <TextField
           label="Email"
           placeholder="you@example.com"

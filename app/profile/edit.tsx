@@ -191,7 +191,7 @@ export default function EditProfile() {
         </View>
 
         <Text style={[styles.label, { marginTop: spacing.lg }]}>Имя</Text>
-        <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Как вас называть?" placeholderTextColor={colors.inkMuted} />
+        <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Как вас называть?" placeholderTextColor={colors.inkMuted} maxLength={20} />
 
         <Text style={[styles.label, { marginTop: spacing.lg }]}>Дата начала отношений</Text>
         <Pressable style={styles.dateField} onPress={() => setShowDatePicker(true)}>

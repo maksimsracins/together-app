@@ -471,7 +471,12 @@ export default function CalendarScreen() {
         {partner && (
           <View style={styles.gridRow}>
             <View style={styles.rowLabelCell}>
-              <Text style={[styles.rowLabelText, { color: colors.skyDark }]} numberOfLines={1}>
+              <Text
+                style={[styles.rowLabelText, { color: colors.skyDark }]}
+                numberOfLines={2}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
                 {partner.name}
               </Text>
             </View>
@@ -580,8 +585,8 @@ const styles = StyleSheet.create({
   gridRow: {
     flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs,
   },
-  rowLabelCell: { width: 56 },
-  rowLabelText: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily },
+  rowLabelCell: { width: 82, paddingRight: spacing.xs },
+  rowLabelText: { ...type.bodySm, fontSize: 12, lineHeight: 15, fontFamily: type.bodySemibold.fontFamily },
   dayHeaderCell: { flex: 1, alignItems: 'center' },
   dayHeaderWeekday: { ...type.label, fontSize: 11, color: colors.inkMuted, textTransform: 'uppercase' },
   dayHeaderDate: { ...type.bodySm, color: colors.inkMuted, marginTop: 1 },

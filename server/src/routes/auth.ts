@@ -6,6 +6,8 @@ import { serializeUser } from '../serializers';
 
 export const authRouter = Router();
 
+const MAX_NAME_LENGTH = 20;
+
 authRouter.post('/signup', async (req, res) => {
   const { email, password, name } = req.body as { email?: string; password?: string; name?: string };
 
@@ -15,6 +17,10 @@ authRouter.post('/signup', async (req, res) => {
   }
   if (password.length < 6) {
     res.status(400).json({ error: 'Пароль должен быть не короче 6 символов' });
+    return;
+  }
+  if (name.trim().length > MAX_NAME_LENGTH) {
+    res.status(400).json({ error: `Имя не может быть длиннее ${MAX_NAME_LENGTH} символов` });
     return;
   }
 
