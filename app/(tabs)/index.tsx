@@ -42,7 +42,9 @@ export default function Home() {
 
   return (
     <View style={styles.root}>
-      <Image source={require('../../assets/home-bg-couple.jpg')} style={styles.bgImage} resizeMode="cover" />
+      <View style={styles.bgWrap} pointerEvents="none">
+        <Image source={require('../../assets/home-bg-couple.png')} style={styles.bgImage} resizeMode="contain" />
+      </View>
       <Screen scroll={false} style={{ backgroundColor: 'transparent' }}>
       <View style={styles.headerRow}>
         <View style={{ flex: 1 }}>
@@ -130,7 +132,11 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.cream },
-  bgImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.12 },
+  bgWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center' },
+  bgImage: {
+    position: 'absolute', bottom: 0, alignSelf: 'center',
+    width: '66%', height: '56%', opacity: 0.65,
+  },
   headerRow: {
     marginTop: spacing.md,
     marginBottom: spacing.xl,
