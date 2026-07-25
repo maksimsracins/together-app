@@ -7,6 +7,8 @@ export const usersRouter = Router();
 
 usersRouter.use(requireAuth);
 
+const MAX_AVATAR_DATA_URI_LENGTH = 5 * 1024 * 1024; // ~3.5MB of actual image data, base64-inflated
+
 usersRouter.get('/me', async (req: AuthedRequest, res) => {
   const user = await db.user.findUnique({ where: { id: req.userId } });
   if (!user) {
@@ -32,6 +34,17 @@ interface UpdateProfileBody {
 
 usersRouter.patch('/me', async (req: AuthedRequest, res) => {
   const body = req.body as UpdateProfileBody;
+
+  if (body.avatarUri) {
+    if (!body.avatarUri.startsWith('data:image/')) {
+      res.status(400).json({ error: 'Некорректный формат фото' });
+      return;
+    }
+    if (body.avatarUri.length > MAX_AVATAR_DATA_URI_LENGTH) {
+      res.status(400).json({ error: 'Фото слишком большое' });
+      return;
+    }
+  }
 
   const user = await db.user.update({
     where: { id: req.userId },

@@ -92,8 +92,10 @@ export default function EditProfile() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
+      base64: true,
     });
-    if (!result.canceled) setAvatarUri(result.assets[0].uri);
+    const asset = result.assets?.[0];
+    if (!result.canceled && asset?.base64) setAvatarUri(`data:image/jpeg;base64,${asset.base64}`);
   };
 
   const pickFromCamera = async () => {
@@ -106,8 +108,10 @@ export default function EditProfile() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
+      base64: true,
     });
-    if (!result.canceled) setAvatarUri(result.assets[0].uri);
+    const asset = result.assets?.[0];
+    if (!result.canceled && asset?.base64) setAvatarUri(`data:image/jpeg;base64,${asset.base64}`);
   };
 
   const handleLeaveCouple = () => {
