@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/components/Screen';
@@ -42,9 +42,6 @@ export default function Home() {
 
   return (
     <View style={styles.root}>
-      <View style={styles.bgWrap} pointerEvents="none">
-        <Image source={require('../../assets/home-bg-couple.png')} style={styles.bgImage} resizeMode="contain" />
-      </View>
       <Screen scroll={false} style={{ backgroundColor: 'transparent' }}>
       <View style={styles.headerRow}>
         <View style={{ flex: 1 }}>
@@ -132,11 +129,6 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.cream },
-  bgWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center' },
-  bgImage: {
-    position: 'absolute', bottom: 0, alignSelf: 'center',
-    width: '66%', height: '56%', opacity: 0.65,
-  },
   headerRow: {
     marginTop: spacing.md,
     marginBottom: spacing.xl,

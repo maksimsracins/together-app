@@ -28,16 +28,9 @@ export default function ReportSummary() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.headerBtn} hitSlop={10}>
-          <Ionicons name="close" size={20} color={colors.ink} />
-        </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>{r?.weekLabel ?? 'Отчёт'}</Text>
-        <Pressable onPress={generateReport} disabled={isGenerating} style={styles.headerBtn} hitSlop={10}>
-          {isGenerating ? (
-            <ActivityIndicator size="small" color={colors.roseDark} />
-          ) : (
-            <Ionicons name="refresh-outline" size={19} color={colors.roseDark} />
-          )}
+        <Pressable onPress={() => router.back()} style={styles.closeBtn} hitSlop={10}>
+          <Ionicons name="close" size={20} color={colors.ink} />
         </Pressable>
       </View>
 
@@ -62,6 +55,16 @@ export default function ReportSummary() {
           <>
             <Text style={styles.heroEmoji}>💌</Text>
             <Text style={styles.title}>Ваша история недели</Text>
+
+            <Pressable style={styles.refresh} onPress={generateReport} disabled={isGenerating} hitSlop={6}>
+              {isGenerating ? (
+                <ActivityIndicator size="small" color={colors.roseDark} />
+              ) : (
+                <Ionicons name="refresh-outline" size={14} color={colors.roseDark} />
+              )}
+              <Text style={styles.refreshText}>{isGenerating ? 'Генерируем…' : 'Обновить'}</Text>
+            </Pressable>
+
             <Text style={styles.narrative}>{r.narrative}</Text>
 
             <Pressable style={styles.toggle} onPress={() => setDetailsOpen((v) => !v)} hitSlop={6}>
@@ -97,15 +100,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.xl, paddingVertical: spacing.md,
   },
-  headerBtn: {
+  closeBtn: {
     width: 36, height: 36, borderRadius: 18, backgroundColor: colors.card,
     alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.inkMuted, flex: 1, textAlign: 'center' },
+  headerTitle: { ...type.h3, color: colors.ink, flex: 1, marginRight: spacing.md },
   content: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xxxl, flexGrow: 1 },
   error: { ...type.bodySm, color: colors.danger, textAlign: 'center', marginBottom: spacing.lg },
   heroEmoji: { fontSize: 40, textAlign: 'center', marginBottom: spacing.md },
-  title: { ...type.h2, color: colors.ink, textAlign: 'center', marginBottom: spacing.xl },
+  title: { ...type.h2, color: colors.ink, textAlign: 'center', marginBottom: spacing.md },
+  refresh: {
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'center', marginBottom: spacing.xl,
+  },
+  refreshText: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.roseDark, marginLeft: 4 },
   narrative: { ...type.bodyLg, color: colors.ink, lineHeight: 27 },
   toggle: {
     flexDirection: 'row', alignItems: 'center', alignSelf: 'center', marginTop: spacing.xl,
