@@ -10,7 +10,7 @@ import { useAuthStore } from '../../src/store/useAuthStore';
 import { useNotificationsStore } from '../../src/store/useNotificationsStore';
 import { getCoupleSettings } from '../../src/services/couples';
 import { ENTRY_TYPES } from '../../src/data/catalog';
-import { colors, radius, spacing, type } from '../../src/theme';
+import { colors, radius, shadow, spacing, type } from '../../src/theme';
 import { greeting, pluralDays } from '../../src/utils/week';
 
 // Approximates days remaining until the couple's next scheduled report using
@@ -109,7 +109,7 @@ export default function Home() {
 
       <View style={styles.entriesHeader}>
         <Text style={styles.sectionLabel}>Эта неделя</Text>
-        <Pressable onPress={() => router.push('/(tabs)/history')}>
+        <Pressable onPress={() => router.push('/(tabs)/calendar')}>
           <Text style={styles.link}>Все записи</Text>
         </Pressable>
       </View>
@@ -140,14 +140,10 @@ export default function Home() {
       <View style={{ flex: 1 }} />
 
       <Pressable style={styles.cta} onPress={() => router.push('/entry/new')}>
-        <View style={styles.ctaIcon}>
-          <Text style={{ fontSize: 22 }}>🌷</Text>
+        <View style={styles.ctaCircle}>
+          <Ionicons name="add" size={30} color={colors.white} />
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.ctaTitle}>Поделиться переживанием</Text>
-          <Text style={styles.ctaSubtitle}>Эмоция, мысль, благодарность — что угодно</Text>
-        </View>
-        <Text style={styles.ctaArrow}>→</Text>
+        <Text style={styles.ctaLabel}>Поделиться переживанием</Text>
       </Pressable>
     </Screen>
   );
@@ -212,15 +208,13 @@ const styles = StyleSheet.create({
   statEmoji: { fontSize: 22 },
   statCount: { ...type.h3, color: colors.ink, marginTop: 2 },
   statLabel: { ...type.label, color: colors.inkMuted, fontSize: 10, marginTop: 2, textAlign: 'center' },
-  cta: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.rose,
-    borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.xxl,
+  cta: { alignItems: 'center', marginBottom: spacing.xxl },
+  ctaCircle: {
+    width: 64, height: 64, borderRadius: 32, backgroundColor: colors.rose,
+    alignItems: 'center', justifyContent: 'center', ...shadow.soft,
   },
-  ctaIcon: {
-    width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.25)',
-    alignItems: 'center', justifyContent: 'center', marginRight: spacing.md,
+  ctaLabel: {
+    ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.ink,
+    marginTop: spacing.sm, textAlign: 'center',
   },
-  ctaTitle: { ...type.bodyLg, fontFamily: type.bodyBold.fontFamily, color: colors.white },
-  ctaSubtitle: { ...type.bodySm, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
-  ctaArrow: { ...type.h3, color: colors.white, marginLeft: spacing.sm },
 });
