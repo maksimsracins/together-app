@@ -251,10 +251,11 @@ export default function CalendarScreen() {
           <Pressable style={styles.pickerBackdrop} onPress={() => setSettingsVisible(false)} />
           <View style={styles.pickerSheet}>
             <View style={styles.pickerSheetHeader}>
-              <Text style={styles.pickerSheetTitle}>Настройки отчёта</Text>
-              <Pressable onPress={() => setSettingsVisible(false)}>
-                <Text style={styles.pickerDone}>Готово</Text>
+              <Pressable onPress={() => setSettingsVisible(false)} style={styles.pickerCloseBtn} hitSlop={10}>
+                <Ionicons name="close" size={20} color={colors.ink} />
               </Pressable>
+              <Text style={styles.pickerSheetTitle}>Настройки отчёта</Text>
+              <View style={[styles.pickerCloseBtn, { backgroundColor: 'transparent' }]} />
             </View>
 
             <Text style={styles.settingLabel}>День отчёта</Text>
@@ -482,8 +483,14 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md, marginHorizontal: -spacing.xl, paddingHorizontal: spacing.xl,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  pickerSheetTitle: { ...type.bodySemibold, fontFamily: type.bodySemibold.fontFamily, color: colors.ink },
-  pickerDone: { ...type.bodySemibold, fontFamily: type.bodySemibold.fontFamily, color: colors.roseDark },
+  pickerSheetTitle: {
+    ...type.bodySemibold, fontFamily: type.bodySemibold.fontFamily, color: colors.ink,
+    flex: 1, textAlign: 'center',
+  },
+  pickerCloseBtn: {
+    width: 32, height: 32, borderRadius: 16, backgroundColor: colors.card,
+    alignItems: 'center', justifyContent: 'center',
+  },
   settingLabel: { ...type.bodySemibold, fontFamily: type.bodySemibold.fontFamily, color: colors.ink, marginTop: spacing.xl },
   settingHint: { ...type.bodySm, color: colors.inkMuted, marginTop: 2 },
   intervalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.md, flexWrap: 'wrap', gap: spacing.sm },

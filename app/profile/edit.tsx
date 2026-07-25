@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -152,11 +152,26 @@ export default function EditProfile() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.header}>
-        <Text style={styles.title}>Редактировать профиль</Text>
-        <Pressable onPress={() => router.back()} style={styles.closeBtn} hitSlop={10}>
-          <Ionicons name="close" size={20} color={colors.ink} />
-        </Pressable>
+        <View style={styles.headerSide}>
+          <Pressable onPress={() => router.back()} style={styles.closeBtn} hitSlop={10}>
+            <Ionicons name="close" size={20} color={colors.ink} />
+          </Pressable>
+        </View>
+
+        <Text style={styles.title} numberOfLines={1}>Редактировать профиль</Text>
+
+        <View style={[styles.headerSide, { justifyContent: 'flex-end' }]}>
+          <Pressable onPress={handleSave} disabled={!canSave || saving} hitSlop={10}>
+            {saving ? (
+              <ActivityIndicator size="small" color={colors.roseDark} />
+            ) : (
+              <Text style={[styles.saveText, !canSave && styles.saveTextDisabled]}>Сохранить</Text>
+            )}
+          </Pressable>
+        </View>
       </View>
+
+      {error && <Text style={styles.errorBanner}>⚠️ {error}</Text>}
 
       <ScrollView
         style={{ flex: 1 }}
@@ -299,10 +314,6 @@ export default function EditProfile() {
             <Button label="Убрать пару" variant="outline" onPress={handleLeaveCouple} />
           </>
         )}
-
-        {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
-
-        <Button label="Сохранить" onPress={handleSave} disabled={!canSave || saving} loading={saving} style={{ marginTop: spacing.xl }} />
       </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -396,11 +407,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.xl, paddingVertical: spacing.md,
   },
-  title: { ...type.h3, color: colors.ink },
+  title: { ...type.h3, color: colors.ink, flex: 1, textAlign: 'center' },
+  headerSide: { flexDirection: 'row', alignItems: 'center', minWidth: 44 },
   closeBtn: {
     width: 36, height: 36, borderRadius: 18, backgroundColor: colors.card,
     alignItems: 'center', justifyContent: 'center',
   },
+  saveText: { ...type.bodyLg, fontFamily: type.bodyBold.fontFamily, color: colors.roseDark },
+  saveTextDisabled: { color: colors.inkMuted },
+  errorBanner: { ...type.bodySm, color: colors.danger, textAlign: 'center', paddingHorizontal: spacing.xl, marginBottom: spacing.sm },
   content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xxxl },
   label: { ...type.label, color: colors.inkMuted, textTransform: 'uppercase', marginBottom: spacing.md },
   labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
@@ -442,7 +457,6 @@ const styles = StyleSheet.create({
   },
   pickerSheetTitle: { ...type.bodySemibold, fontFamily: type.bodySemibold.fontFamily, color: colors.ink },
   pickerDone: { ...type.bodySemibold, fontFamily: type.bodySemibold.fontFamily, color: colors.roseDark },
-  errorText: { ...type.bodySm, color: colors.danger, textAlign: 'center', marginTop: spacing.lg },
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap' },
   tagInputRow: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: radius.pill,
