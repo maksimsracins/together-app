@@ -18,6 +18,7 @@ export default function TabsLayout() {
   const loadEntries = useAppStore((s) => s.loadEntries);
   const loadPartnerEntries = useAppStore((s) => s.loadPartnerEntries);
   const loadLatestReport = useAppStore((s) => s.loadLatestReport);
+  const loadCoupleSettings = useAppStore((s) => s.loadCoupleSettings);
   const loadNotifications = useNotificationsStore((s) => s.load);
 
   useEffect(() => {
@@ -25,27 +26,30 @@ export default function TabsLayout() {
       loadEntries();
       loadPartnerEntries();
       loadLatestReport();
+      loadCoupleSettings().catch(() => {});
       loadNotifications().catch(() => {});
     }
-  }, [authStatus, loadEntries, loadPartnerEntries, loadLatestReport, loadNotifications]);
+  }, [authStatus, loadEntries, loadPartnerEntries, loadLatestReport, loadCoupleSettings, loadNotifications]);
 
   // Keep polling for couple changes as long as we're in one — this catches a
   // partner joining (coupleId set, partner still null) as well as the couple
   // being dissolved from the other side (our own coupleId flips back to null).
-  // Notifications and the shared weekly report ride the same interval — a
-  // "partner left" entry, or a report the *other* partner just generated, are
-  // exactly the kind of thing that shows up between polls. The report is one
-  // shared object per couple, so both phones need to converge on it without
-  // either partner having to manually refresh.
+  // Notifications, the shared weekly report, and the shared report settings
+  // all ride the same interval — a "partner left" entry, a report the *other*
+  // partner just generated, or a schedule/notification toggle they just
+  // changed are exactly the kind of thing that shows up between polls. These
+  // are single shared objects per couple, so both phones need to converge on
+  // them without either partner having to manually refresh.
   useEffect(() => {
     if (authStatus !== 'authed') return;
     const interval = setInterval(() => {
       refreshMe();
       loadNotifications().catch(() => {});
       loadLatestReport().catch(() => {});
+      loadCoupleSettings().catch(() => {});
     }, PARTNER_POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [authStatus, refreshMe, loadNotifications, loadLatestReport]);
+  }, [authStatus, refreshMe, loadNotifications, loadLatestReport, loadCoupleSettings]);
 
   // JS timers pause while the app is backgrounded, so the interval above alone
   // misses a change that happened while this device was locked/backgrounded —
@@ -57,10 +61,11 @@ export default function TabsLayout() {
         refreshMe();
         loadNotifications().catch(() => {});
         loadLatestReport().catch(() => {});
+        loadCoupleSettings().catch(() => {});
       }
     });
     return () => subscription.remove();
-  }, [authStatus, refreshMe, loadNotifications, loadLatestReport]);
+  }, [authStatus, refreshMe, loadNotifications, loadLatestReport, loadCoupleSettings]);
 
   const previousPartnerRef = useRef(partner);
   useEffect(() => {

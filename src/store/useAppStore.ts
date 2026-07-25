@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { EmotionKey, Entry, EntryType, WeeklyReport } from '../types';
 import * as entriesService from '../services/entries';
 import * as reportService from '../services/report';
+import * as couplesService from '../services/couples';
+import { CoupleSettings } from '../services/couples';
 
 interface NewEntryInput {
   type: EntryType;
@@ -32,6 +34,11 @@ interface AppState {
   reportSource: 'none' | 'ai';
   reportGeneratedAt: string | null;
 
+  // One shared object per couple, not per-device -- kept in sync the same way
+  // as the report, so a setting either partner changes shows up for the
+  // other without needing to leave and reopen the app.
+  coupleSettings: CoupleSettings | null;
+
   loadEntries: () => Promise<void>;
   loadPartnerEntries: () => Promise<void>;
   addEntry: (input: NewEntryInput) => Promise<void>;
@@ -40,6 +47,7 @@ interface AppState {
   setEntryReaction: (entryId: string, emoji: string | null) => Promise<void>;
   loadLatestReport: () => Promise<void>;
   generateReport: () => Promise<void>;
+  loadCoupleSettings: () => Promise<void>;
   reset: () => void;
 }
 
@@ -64,6 +72,7 @@ const initialState = {
   reportError: null as string | null,
   reportSource: 'none' as 'none' | 'ai',
   reportGeneratedAt: null as string | null,
+  coupleSettings: null as CoupleSettings | null,
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -151,6 +160,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().loadPartnerEntries();
     } catch (err) {
       set({ reportStatus: 'error', reportError: err instanceof Error ? err.message : 'Не удалось сгенерировать отчёт' });
+    }
+  },
+
+  loadCoupleSettings: async () => {
+    try {
+      const coupleSettings = await couplesService.getCoupleSettings();
+      set({ coupleSettings });
+    } catch {
+      // offline or not paired yet — keep whatever we last had
     }
   },
 

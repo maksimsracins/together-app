@@ -110,19 +110,21 @@ entriesRouter.post('/', async (req: AuthedRequest, res) => {
 async function notifyPartnerOfNewEntry(coupleId: string, authorId: string, authorName: string) {
   const couple = await db.couple.findUnique({ where: { id: coupleId } });
   if (!couple?.partnerActivityNotificationsEnabled) {
-    console.log(`Skipping partner-entry push for couple ${coupleId}: partnerActivityNotificationsEnabled is off`);
+    console.log(`Skipping partner-entry notification for couple ${coupleId}: partnerActivityNotificationsEnabled is off`);
     return;
   }
 
   const partner = await db.user.findFirst({ where: { coupleId, id: { not: authorId } } });
-  if (!partner?.pushToken) {
+  if (!partner) return;
+
+  const message = `${authorName} поделился(-ась) чем-то новым 💌`;
+  await db.notification.create({ data: { userId: partner.id, type: 'partner_entry', message } });
+
+  if (!partner.pushToken) {
     console.log(`Skipping partner-entry push for couple ${coupleId}: partner has no pushToken`);
     return;
   }
-
-  await sendPushNotification(partner.pushToken, 'Together', `${authorName} поделился(-ась) чем-то новым 💌`, {
-    type: 'partner_entry',
-  });
+  await sendPushNotification(partner.pushToken, 'Together', message, { type: 'partner_entry' });
 }
 
 entriesRouter.patch('/:id', async (req: AuthedRequest, res) => {

@@ -10,8 +10,8 @@ import { Button } from '../../src/components/Button';
 import { ReportView } from '../../src/components/ReportView';
 import { useAppStore } from '../../src/store/useAppStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
-import { getCoupleSettings, updateCoupleSettings } from '../../src/services/couples';
-import { getMe, registerPushToken, updateMe } from '../../src/services/users';
+import { updateCoupleSettings } from '../../src/services/couples';
+import { registerPushToken } from '../../src/services/users';
 import { ApiError } from '../../src/services/http';
 import { colors, radius, spacing, type } from '../../src/theme';
 
@@ -45,6 +45,7 @@ async function ensurePushRegistered(): Promise<{ ok: true } | { ok: false; error
 export default function Report() {
   const user = useAuthStore((s) => s.user)!;
   const partner = useAuthStore((s) => s.partner);
+  const updateProfile = useAuthStore((s) => s.updateProfile);
   const {
     weeklyReport: r,
     setEntryReaction,
@@ -53,6 +54,7 @@ export default function Report() {
     reportError,
     reportSource,
     reportGeneratedAt,
+    coupleSettings,
   } = useAppStore();
   const isLoading = reportStatus === 'loading';
 
@@ -61,26 +63,26 @@ export default function Report() {
   const [reportHour, setReportHour] = useState<number | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [partnerActivityEnabled, setPartnerActivityEnabled] = useState(false);
-  const [journalReminderEnabled, setJournalReminderEnabled] = useState(true);
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [savingNotifications, setSavingNotifications] = useState(false);
   const [savingPartnerActivity, setSavingPartnerActivity] = useState(false);
   const [notificationsError, setNotificationsError] = useState<string | null>(null);
 
+  // coupleSettings is one shared object, kept fresh by app-wide polling —
+  // mirror it into local state so this screen reflects a change the *other*
+  // partner just made, without clobbering a save this device has in flight.
   useEffect(() => {
-    getCoupleSettings()
-      .then((s) => {
-        setReportWeekday(s.reportWeekday);
-        setReportHour(s.reportHour);
-        setNotificationsEnabled(s.notificationsEnabled);
-        setPartnerActivityEnabled(s.partnerActivityNotificationsEnabled);
-      })
-      .catch(() => {});
-    getMe()
-      .then((u) => setJournalReminderEnabled(u.journalReminderEnabled ?? true))
-      .catch(() => {});
-  }, []);
+    if (!coupleSettings) return;
+    if (!savingSchedule) {
+      setReportWeekday(coupleSettings.reportWeekday);
+      setReportHour(coupleSettings.reportHour);
+    }
+    if (!savingNotifications) setNotificationsEnabled(coupleSettings.notificationsEnabled);
+    if (!savingPartnerActivity) setPartnerActivityEnabled(coupleSettings.partnerActivityNotificationsEnabled);
+  }, [coupleSettings, savingSchedule, savingNotifications, savingPartnerActivity]);
+
+  const journalReminderEnabled = user.journalReminderEnabled ?? true;
 
   const handlePickWeekday = async (day: number) => {
     const previous = reportWeekday;
@@ -164,9 +166,8 @@ export default function Report() {
     }
   };
 
-  const handleToggleJournalReminder = async (next: boolean) => {
-    setJournalReminderEnabled(next);
-    updateMe({ journalReminderEnabled: next }).catch(() => setJournalReminderEnabled(!next));
+  const handleToggleJournalReminder = (next: boolean) => {
+    updateProfile({ journalReminderEnabled: next }).catch(() => {});
   };
 
   return (

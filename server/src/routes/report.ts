@@ -96,13 +96,20 @@ type CoupleCtx = NonNullable<Awaited<ReturnType<typeof ensureCoupleContext>>>;
 // tapping "Обновить".
 export async function notifyCoupleReportReady(couple: Couple, me: User, partner: User | null) {
   if (!couple.notificationsEnabled) {
-    console.log(`Skipping report-ready push for couple ${couple.id}: notificationsEnabled is off`);
+    console.log(`Skipping report-ready notification for couple ${couple.id}: notificationsEnabled is off`);
     return;
   }
-  const recipients = [me, partner].filter((u): u is User => !!u?.pushToken);
+
+  const message = 'Ваш новый отчёт готов 💞';
+  const members = [me, partner].filter((u): u is User => !!u);
+  await db.notification.createMany({
+    data: members.map((u) => ({ userId: u.id, type: 'report_ready', message })),
+  });
+
+  const recipients = members.filter((u) => !!u.pushToken);
   console.log(`Sending report-ready push for couple ${couple.id} to ${recipients.length} recipient(s)`);
   await Promise.all(
-    recipients.map((u) => sendPushNotification(u.pushToken!, 'Together', 'Ваш новый отчёт готов 💞', { type: 'report_ready' }))
+    recipients.map((u) => sendPushNotification(u.pushToken!, 'Together', message, { type: 'report_ready' }))
   );
 }
 

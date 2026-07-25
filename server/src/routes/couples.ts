@@ -6,6 +6,8 @@ export const couplesRouter = Router();
 
 couplesRouter.use(requireAuth);
 
+const WEEKDAY_NAMES = ['', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
+
 function randomCode() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
   let code = '';
@@ -120,6 +122,18 @@ couplesRouter.post('/join', async (req: AuthedRequest, res) => {
 
   await db.user.update({ where: { id: user.id }, data: { coupleId: couple.id } });
   res.json({ id: couple.id, inviteCode: couple.inviteCode });
+
+  if (otherMembers.length > 0) {
+    db.notification
+      .createMany({
+        data: otherMembers.map((other) => ({
+          userId: other.id,
+          type: 'partner_joined',
+          message: `${user.name} присоединил(-ась) к вам в Together 💞`,
+        })),
+      })
+      .catch((err) => console.error('Failed to notify of partner joining', err));
+  }
 });
 
 couplesRouter.post('/leave', async (req: AuthedRequest, res) => {
@@ -222,7 +236,7 @@ couplesRouter.patch('/settings', async (req: AuthedRequest, res) => {
     res.status(404).json({ error: 'Пользователь не найден' });
     return;
   }
-  const { couple } = ctx;
+  const { couple, me, partner } = ctx;
 
   const changingSchedule = body.reportWeekday !== undefined || body.reportHour !== undefined;
   let scheduleChanges: string[] = [];
@@ -263,4 +277,28 @@ couplesRouter.patch('/settings', async (req: AuthedRequest, res) => {
     notificationsEnabled: updated.notificationsEnabled,
     partnerActivityNotificationsEnabled: updated.partnerActivityNotificationsEnabled,
   });
+
+  if (partner) {
+    const changes: string[] = [];
+    if (body.reportWeekday !== undefined) changes.push(`день отчёта на ${WEEKDAY_NAMES[body.reportWeekday]}`);
+    if (body.reportHour !== undefined) changes.push(`время отчёта на ${body.reportHour}:00`);
+    if (body.notificationsEnabled !== undefined) {
+      changes.push(`уведомление о новом отчёте (${body.notificationsEnabled ? 'включено' : 'выключено'})`);
+    }
+    if (body.partnerActivityNotificationsEnabled !== undefined) {
+      changes.push(`уведомление «партнёр поделился» (${body.partnerActivityNotificationsEnabled ? 'включено' : 'выключено'})`);
+    }
+
+    if (changes.length > 0) {
+      db.notification
+        .create({
+          data: {
+            userId: partner.id,
+            type: 'report_settings_changed',
+            message: `${me.name} изменил(а) настройки отчёта: ${changes.join(', ')}.`,
+          },
+        })
+        .catch((err) => console.error('Failed to notify of settings change', err));
+    }
+  }
 });

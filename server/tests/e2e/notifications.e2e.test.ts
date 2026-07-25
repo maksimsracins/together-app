@@ -35,6 +35,26 @@ describe('notifications', () => {
     expect(res.status).toBe(401);
   });
 
+  it('notifies the other member when someone joins the couple, but not the joiner', async () => {
+    const { alice, bob } = await pairUp('join-notify');
+
+    const aliceNotifications = await request(app)
+      .get('/api/notifications')
+      .set('Authorization', `Bearer ${alice.token}`);
+    expect(aliceNotifications.status).toBe(200);
+    expect(aliceNotifications.body).toHaveLength(1);
+    expect(aliceNotifications.body[0]).toMatchObject({
+      type: 'partner_joined',
+      message: expect.stringContaining('Bob'),
+      readAt: null,
+    });
+
+    const bobNotifications = await request(app)
+      .get('/api/notifications')
+      .set('Authorization', `Bearer ${bob.token}`);
+    expect(bobNotifications.body).toHaveLength(0);
+  });
+
   it('notifies the other member when someone leaves the couple, but not the leaver', async () => {
     const { alice, bob } = await pairUp('leave-notify');
 
@@ -44,12 +64,14 @@ describe('notifications', () => {
       .get('/api/notifications')
       .set('Authorization', `Bearer ${alice.token}`);
     expect(aliceNotifications.status).toBe(200);
-    expect(aliceNotifications.body).toHaveLength(1);
-    expect(aliceNotifications.body[0]).toMatchObject({
-      type: 'partner_left',
-      message: expect.stringContaining('Bob'),
-      readAt: null,
-    });
+    // One from Bob joining earlier, one from Bob leaving now.
+    expect(aliceNotifications.body).toHaveLength(2);
+    expect(aliceNotifications.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'partner_joined', message: expect.stringContaining('Bob') }),
+        expect.objectContaining({ type: 'partner_left', message: expect.stringContaining('Bob'), readAt: null }),
+      ])
+    );
 
     const bobNotifications = await request(app)
       .get('/api/notifications')
@@ -70,8 +92,8 @@ describe('notifications', () => {
     const after = await request(app)
       .get('/api/notifications')
       .set('Authorization', `Bearer ${alice.token}`);
-    expect(after.body).toHaveLength(1);
-    expect(after.body[0].readAt).toEqual(expect.any(String));
+    expect(after.body).toHaveLength(2);
+    expect(after.body.every((n: { readAt: string | null }) => n.readAt)).toBe(true);
   });
 
   it('deletes a notification', async () => {
@@ -79,6 +101,7 @@ describe('notifications', () => {
     await request(app).post('/api/couples/leave').set('Authorization', `Bearer ${bob.token}`).send();
 
     const list = await request(app).get('/api/notifications').set('Authorization', `Bearer ${alice.token}`);
+    expect(list.body).toHaveLength(2);
     const id = list.body[0].id as string;
 
     const deleteRes = await request(app)
@@ -87,7 +110,8 @@ describe('notifications', () => {
     expect(deleteRes.status).toBe(204);
 
     const after = await request(app).get('/api/notifications').set('Authorization', `Bearer ${alice.token}`);
-    expect(after.body).toHaveLength(0);
+    expect(after.body).toHaveLength(1);
+    expect(after.body[0].id).not.toBe(id);
   });
 
   it("rejects deleting another user's notification", async () => {
@@ -104,7 +128,7 @@ describe('notifications', () => {
     const stillThere = await request(app)
       .get('/api/notifications')
       .set('Authorization', `Bearer ${alice.token}`);
-    expect(stillThere.body).toHaveLength(1);
+    expect(stillThere.body).toHaveLength(2);
   });
 
   it('returns 404 deleting a nonexistent notification', async () => {
