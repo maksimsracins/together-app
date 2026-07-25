@@ -10,27 +10,34 @@ export function EntryCard({
   entry,
   editable = false,
   authorLabel,
+  mine,
 }: {
   entry: Entry;
   editable?: boolean;
   authorLabel?: string;
+  mine?: boolean;
 }) {
   const typeMeta = entryTypeMeta(entry.type);
   const emo = emotionMeta(entry.emotion);
   const time = new Date(entry.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   const locked = !!entry.includedInReportId;
+  const accent = mine === undefined ? undefined : mine ? colors.rose : colors.skyDark;
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, editable && pressed && { opacity: 0.8 }]}
+      style={({ pressed }) => [
+        styles.card,
+        accent && { borderLeftWidth: 3, borderLeftColor: accent },
+        editable && pressed && { opacity: 0.8 },
+      ]}
       disabled={!editable}
       onPress={() => router.push({ pathname: '/entry/new', params: { id: entry.id } })}
     >
-      <View style={styles.iconWrap}>
+      <View style={[styles.iconWrap, mine !== undefined && { backgroundColor: mine ? colors.roseMist : colors.skyMist }]}>
         <Text style={styles.icon}>{typeMeta.emoji}</Text>
       </View>
       <View style={{ flex: 1 }}>
-        {authorLabel && <Text style={styles.author}>{authorLabel}</Text>}
+        {authorLabel && <Text style={[styles.author, accent && { color: accent }]}>{authorLabel}</Text>}
         <View style={styles.headerRow}>
           <Text style={styles.type}>{typeMeta.label}</Text>
           <Text style={styles.time}>{time}</Text>
@@ -79,7 +86,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
   },
   icon: { fontSize: 20 },
-  author: { ...type.label, fontSize: 10, color: colors.roseDark, textTransform: 'uppercase', marginBottom: 4 },
+  author: { ...type.bodySemibold, fontFamily: type.bodySemibold.fontFamily, fontSize: 13, color: colors.roseDark, marginBottom: 4 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   type: { ...type.bodySemibold, fontFamily: type.bodySemibold?.fontFamily, color: colors.ink },
   time: { ...type.bodySm, color: colors.inkMuted },

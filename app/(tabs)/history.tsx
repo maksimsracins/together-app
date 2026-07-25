@@ -97,7 +97,7 @@ export default function History() {
           <View key={day} style={{ marginBottom: spacing.lg }}>
             <Text style={styles.dayLabel}>{day}</Text>
             {items.map((e) => (
-              <EntryCard key={e.id} entry={e} editable={e.mine} authorLabel={authorLabel(e.mine)} />
+              <EntryCard key={e.id} entry={e} editable={e.mine} authorLabel={authorLabel(e.mine)} mine={partner ? e.mine : undefined} />
             ))}
           </View>
         ))
@@ -122,7 +122,7 @@ export default function History() {
             <View key={day} style={{ marginBottom: spacing.lg }}>
               <Text style={styles.dayLabel}>{day}</Text>
               {items.map((e) => (
-                <EntryCard key={e.id} entry={e} editable={e.mine} authorLabel={authorLabel(e.mine)} />
+                <EntryCard key={e.id} entry={e} editable={e.mine} authorLabel={authorLabel(e.mine)} mine={partner ? e.mine : undefined} />
               ))}
             </View>
           ))
