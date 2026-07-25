@@ -53,7 +53,7 @@ export default function NewEntry() {
   const existing = storeMatch ?? fetchedExisting ?? undefined;
   const locked = !!existing?.includedInReportId;
 
-  const [entryType, setEntryType] = useState<EntryType>(existing?.type ?? 'worry');
+  const [entryType, setEntryType] = useState<EntryType | null>(existing?.type ?? null);
   const [emotion, setEmotion] = useState<EmotionKey | null>(existing?.emotion ?? null);
   const [text, setText] = useState(existing?.text ?? '');
   const [photoUri, setPhotoUri] = useState<string | null>(existing?.photoUri ?? null);
@@ -74,7 +74,7 @@ export default function NewEntry() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolving]);
 
-  const canSave = emotion !== null && text.trim().length > 0;
+  const canSave = entryType !== null && emotion !== null && text.trim().length > 0;
 
   const handlePickPhoto = async () => {
     setError(null);
@@ -100,7 +100,7 @@ export default function NewEntry() {
   };
 
   const persistEntry = async (finalText: string) => {
-    if (!emotion) return;
+    if (!entryType || !emotion) return;
     setSaving(true);
     setError(null);
     const payload = { type: entryType, emotion, text: finalText.trim(), tags: [], photoUri };
@@ -120,7 +120,19 @@ export default function NewEntry() {
   };
 
   const handleSave = async () => {
-    if (!canSave || !emotion) return;
+    if (!entryType) {
+      setError('Выберите тип записи');
+      return;
+    }
+    if (!emotion) {
+      setError('Выберите эмоцию');
+      return;
+    }
+    if (!text.trim()) {
+      setError('Добавьте текст записи');
+      return;
+    }
+    setError(null);
     await persistEntry(text);
   };
 
@@ -158,7 +170,7 @@ export default function NewEntry() {
 
         <View style={[styles.headerSide, { justifyContent: 'flex-end' }]}>
           {!locked && (
-            <Pressable onPress={handleSave} disabled={!canSave || saving} hitSlop={10}>
+            <Pressable onPress={handleSave} disabled={saving} hitSlop={10}>
               {saving ? (
                 <ActivityIndicator size="small" color={colors.roseDark} />
               ) : (
@@ -170,6 +182,8 @@ export default function NewEntry() {
           )}
         </View>
       </View>
+
+      {error && !resolving && <Text style={styles.errorBanner}>⚠️ {error}</Text>}
 
       {resolving ? (
         <ActivityIndicator style={{ marginTop: spacing.xxl }} color={colors.roseDark} />
@@ -233,8 +247,6 @@ export default function NewEntry() {
             <EmotionPicker value={emotion} onChange={setEmotion} />
           </View>
         </View>
-
-        {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
       </ScrollView>
       )}
       </KeyboardAvoidingView>
@@ -281,7 +293,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl, paddingTop: spacing.lg,
     borderTopWidth: 1, borderTopColor: colors.border,
   },
-  errorText: { ...type.bodySm, color: colors.danger, textAlign: 'center', marginTop: spacing.lg },
+  errorBanner: {
+    ...type.bodySm, color: colors.danger, textAlign: 'center',
+    paddingVertical: spacing.sm, paddingHorizontal: spacing.xl, backgroundColor: colors.roseMist,
+  },
   lockedNote: {
     ...type.bodySm, color: colors.inkSoft, backgroundColor: colors.card, borderRadius: radius.md,
     padding: spacing.md, marginBottom: spacing.lg, lineHeight: 19,

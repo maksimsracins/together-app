@@ -1,15 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/components/Screen';
 import { Card } from '../../src/components/Card';
 import { Avatar } from '../../src/components/Avatar';
-import { useAppStore } from '../../src/store/useAppStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useNotificationsStore } from '../../src/store/useNotificationsStore';
 import { getCoupleSettings } from '../../src/services/couples';
-import { ENTRY_TYPES } from '../../src/data/catalog';
 import { colors, radius, shadow, spacing, type } from '../../src/theme';
 import { greeting, pluralDays } from '../../src/utils/week';
 
@@ -25,28 +23,12 @@ function daysUntilNextReport(weekday: number, hour: number): number {
   return diff;
 }
 
-function pluralEntries(n: number) {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod100 >= 11 && mod100 <= 14) return 'записей';
-  if (mod10 === 1) return 'запись';
-  if (mod10 >= 2 && mod10 <= 4) return 'записи';
-  return 'записей';
-}
-
 export default function Home() {
   const user = useAuthStore((s) => s.user)!;
   const partner = useAuthStore((s) => s.partner);
   const unreadCount = useNotificationsStore((s) => s.unreadCount);
-  const { entries } = useAppStore();
   const g = greeting();
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
-
-  const typeTally = useMemo(() => {
-    const counts = new Map<string, number>();
-    entries.forEach((e) => counts.set(e.type, (counts.get(e.type) ?? 0) + 1));
-    return ENTRY_TYPES.map((t) => ({ ...t, count: counts.get(t.key) ?? 0 })).filter((t) => t.count > 0);
-  }, [entries]);
 
   useEffect(() => {
     getCoupleSettings()
@@ -55,7 +37,9 @@ export default function Home() {
   }, []);
 
   return (
-    <Screen scroll={false}>
+    <View style={styles.root}>
+      <Image source={require('../../assets/home-bg-couple.jpg')} style={styles.bgImage} resizeMode="cover" />
+      <Screen scroll={false} style={{ backgroundColor: 'transparent' }}>
       <View style={styles.headerRow}>
         <View style={{ flex: 1 }}>
           <Text style={styles.greeting}>
@@ -107,36 +91,6 @@ export default function Home() {
         <Text style={styles.countdownEmoji}>📖</Text>
       </Card>
 
-      <View style={styles.entriesHeader}>
-        <Text style={styles.sectionLabel}>Эта неделя</Text>
-        <Pressable onPress={() => router.push('/(tabs)/calendar')}>
-          <Text style={styles.link}>Все записи</Text>
-        </Pressable>
-      </View>
-
-      <Card style={styles.statsCard}>
-        {entries.length === 0 ? (
-          <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 28, marginBottom: spacing.sm }}>🌱</Text>
-            <Text style={styles.statsTitle}>0 записей на этой неделе</Text>
-            <Text style={styles.statsHint}>Поделитесь своими эмоциями с нами</Text>
-          </View>
-        ) : (
-          <>
-            <Text style={styles.statsTitle}>{entries.length} {pluralEntries(entries.length)} на этой неделе</Text>
-            <View style={styles.statsRow}>
-              {typeTally.map((t) => (
-                <View key={t.key} style={styles.statTile}>
-                  <Text style={styles.statEmoji}>{t.emoji}</Text>
-                  <Text style={styles.statCount}>{t.count}</Text>
-                  <Text style={styles.statLabel} numberOfLines={1}>{t.label}</Text>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-      </Card>
-
       <View style={{ flex: 1 }} />
 
       <Pressable style={styles.cta} onPress={() => router.push('/entry/new')}>
@@ -145,11 +99,14 @@ export default function Home() {
         </View>
         <Text style={styles.ctaLabel}>Поделиться эмоцией</Text>
       </Pressable>
-    </Screen>
+      </Screen>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.cream },
+  bgImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.12 },
   headerRow: {
     marginTop: spacing.md,
     marginBottom: spacing.xl,
@@ -197,17 +154,6 @@ const styles = StyleSheet.create({
   countdownLabel: { ...type.bodySm, color: colors.sageDark },
   countdownValue: { ...type.h2, color: colors.ink, marginTop: 4 },
   countdownEmoji: { fontSize: 34 },
-  entriesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionLabel: { ...type.label, color: colors.inkMuted, textTransform: 'uppercase', marginBottom: spacing.md },
-  link: { ...type.bodySm, color: colors.roseDark, fontFamily: type.bodySemibold.fontFamily, marginBottom: spacing.md },
-  statsCard: { alignItems: 'center' },
-  statsTitle: { ...type.bodyLg, fontFamily: type.bodySemibold.fontFamily, color: colors.ink, textAlign: 'center' },
-  statsHint: { ...type.bodySm, color: colors.inkMuted, marginTop: 4, textAlign: 'center' },
-  statsRow: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', marginTop: spacing.lg },
-  statTile: { alignItems: 'center', width: 72, marginHorizontal: spacing.xs, marginBottom: spacing.sm },
-  statEmoji: { fontSize: 22 },
-  statCount: { ...type.h3, color: colors.ink, marginTop: 2 },
-  statLabel: { ...type.label, color: colors.inkMuted, fontSize: 10, marginTop: 2, textAlign: 'center' },
   cta: { alignItems: 'center', marginBottom: spacing.xxl },
   ctaCircle: {
     width: 64, height: 64, borderRadius: 32, backgroundColor: colors.rose,

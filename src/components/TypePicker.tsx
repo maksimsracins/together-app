@@ -5,7 +5,7 @@ import { EntryType } from '../types';
 import { colors, radius, spacing, type } from '../theme';
 
 interface Props {
-  value: EntryType;
+  value: EntryType | null;
   onChange: (key: EntryType) => void;
 }
 

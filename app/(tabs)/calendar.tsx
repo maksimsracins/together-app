@@ -35,9 +35,6 @@ interface Selection {
 }
 
 const WEEKDAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-const WEEKDAY_DATIVE_PLURAL = [
-  '', 'понедельникам', 'вторникам', 'средам', 'четвергам', 'пятницам', 'субботам', 'воскресеньям',
-];
 const WEEKDAY_OPTIONS = [
   { value: 1, label: 'Пн' },
   { value: 2, label: 'Вт' },
@@ -366,62 +363,7 @@ export default function CalendarScreen() {
         {partner ? 'Выберите день и кто именно — вы или партнёр' : 'Выберите день, чтобы увидеть записи'}
       </Text>
 
-      <Card tone={reportSource === 'ai' ? 'sage' : 'card'} style={styles.aiCard}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.aiTitle}>{reportSource === 'ai' ? '✨ Анализ от AI' : 'Отчёт ещё не создан'}</Text>
-          <Text style={styles.aiSubtitle}>
-            {reportSource === 'ai'
-              ? `Сгенерировано ${new Date(reportGeneratedAt!).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
-              : 'Нажмите, чтобы AI разобрал ваши записи, или дождитесь автоматического отчёта'}
-          </Text>
-          {reportWeekday !== null && reportHour !== null && (
-            <Text style={styles.aiHint}>
-              Формируется автоматически по {WEEKDAY_DATIVE_PLURAL[reportWeekday]} в {reportHour}:00
-            </Text>
-          )}
-          {reportStatus === 'error' && <Text style={styles.aiError}>⚠️ {reportError}</Text>}
-        </View>
-        <Button
-          label={reportSource === 'ai' ? 'Обновить' : 'Сгенерировать'}
-          onPress={generateReport}
-          variant="secondary"
-          fullWidth={false}
-          loading={isGenerating}
-          style={styles.aiButton}
-        />
-      </Card>
-
-      {r && (
-        <Button
-          label="Ваша история недели"
-          onPress={() => setSummaryVisible(true)}
-          variant="outline"
-          icon={<Ionicons name="book-outline" size={17} color={colors.ink} />}
-          style={{ marginBottom: spacing.lg }}
-        />
-      )}
-
-      <Modal
-        visible={summaryVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSummaryVisible(false)}
-      >
-        <View style={styles.pickerOverlay}>
-          <Pressable style={styles.pickerBackdrop} onPress={() => setSummaryVisible(false)} />
-          <View style={styles.pickerSheet}>
-            <View style={styles.pickerSheetHeader}>
-              <View style={{ width: 60 }} />
-              <Pressable onPress={() => setSummaryVisible(false)}>
-                <Text style={styles.pickerDone}>Готово</Text>
-              </Pressable>
-            </View>
-            {r && <ReportSummaryCard narrative={r.narrative} narrativeDeep={r.narrativeDeep} />}
-          </View>
-        </View>
-      </Modal>
-
-      <Card style={{ marginTop: spacing.xl }}>
+      <Card style={{ marginTop: spacing.md }}>
         <View style={styles.weekHeader}>
           <Pressable onPress={() => goToWeek(subWeeks(weekCursor, 1))} hitSlop={10} style={styles.weekNavBtn}>
             <Ionicons name="chevron-back" size={18} color={colors.roseDark} />
@@ -527,6 +469,57 @@ export default function CalendarScreen() {
           <EntryCard key={e.id} entry={e} editable={selected.author === 'mine'} />
         ))
       )}
+
+      <Card tone={reportSource === 'ai' ? 'sage' : 'card'} style={styles.aiCard}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.aiTitle} numberOfLines={1}>
+            {reportSource === 'ai' ? '✨ Анализ от AI' : 'Отчёт ещё не создан'}
+          </Text>
+          <Text style={styles.aiSubtitle} numberOfLines={1}>
+            {reportSource === 'ai'
+              ? `Обновлено ${new Date(reportGeneratedAt!).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+              : 'Нажмите, чтобы разобрать записи'}
+          </Text>
+          {reportStatus === 'error' && <Text style={styles.aiError} numberOfLines={2}>⚠️ {reportError}</Text>}
+        </View>
+        <Button
+          label={reportSource === 'ai' ? 'Обновить' : 'Сгенерировать'}
+          onPress={generateReport}
+          variant="secondary"
+          fullWidth={false}
+          loading={isGenerating}
+          style={styles.aiButton}
+        />
+      </Card>
+
+      {r && (
+        <Button
+          label="Ваша история недели"
+          onPress={() => setSummaryVisible(true)}
+          variant="outline"
+          icon={<Ionicons name="book-outline" size={17} color={colors.ink} />}
+        />
+      )}
+
+      <Modal
+        visible={summaryVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSummaryVisible(false)}
+      >
+        <View style={styles.pickerOverlay}>
+          <Pressable style={styles.pickerBackdrop} onPress={() => setSummaryVisible(false)} />
+          <View style={styles.pickerSheet}>
+            <View style={styles.pickerSheetHeader}>
+              <View style={{ width: 60 }} />
+              <Pressable onPress={() => setSummaryVisible(false)}>
+                <Text style={styles.pickerDone}>Готово</Text>
+              </Pressable>
+            </View>
+            {r && <ReportSummaryCard narrative={r.narrative} narrativeDeep={r.narrativeDeep} />}
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -568,12 +561,14 @@ const styles = StyleSheet.create({
   },
   notifyRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.xl },
   notifyError: { ...type.bodySm, color: colors.danger, marginTop: spacing.md },
-  aiCard: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg },
-  aiTitle: { ...type.bodySemibold, fontFamily: type.bodySemibold.fontFamily, color: colors.ink },
-  aiSubtitle: { ...type.bodySm, color: colors.inkMuted, marginTop: 2 },
-  aiHint: { ...type.bodySm, color: colors.inkMuted, marginTop: 2 },
+  aiCard: {
+    flexDirection: 'row', alignItems: 'center', marginTop: spacing.xl, marginBottom: spacing.md,
+    paddingVertical: spacing.md, paddingHorizontal: spacing.lg,
+  },
+  aiTitle: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.ink },
+  aiSubtitle: { ...type.label, fontSize: 11, color: colors.inkMuted, marginTop: 2 },
   aiError: { ...type.bodySm, color: colors.danger, marginTop: spacing.xs },
-  aiButton: { paddingHorizontal: spacing.lg, paddingVertical: 10, marginLeft: spacing.md },
+  aiButton: { paddingHorizontal: spacing.md, paddingVertical: 8, marginLeft: spacing.md },
   weekHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md,
   },
