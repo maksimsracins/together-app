@@ -32,16 +32,20 @@ export default function TabsLayout() {
   // Keep polling for couple changes as long as we're in one — this catches a
   // partner joining (coupleId set, partner still null) as well as the couple
   // being dissolved from the other side (our own coupleId flips back to null).
-  // Notifications ride the same interval — a "partner left" entry is exactly
-  // the kind of thing that shows up between polls.
+  // Notifications and the shared weekly report ride the same interval — a
+  // "partner left" entry, or a report the *other* partner just generated, are
+  // exactly the kind of thing that shows up between polls. The report is one
+  // shared object per couple, so both phones need to converge on it without
+  // either partner having to manually refresh.
   useEffect(() => {
     if (authStatus !== 'authed') return;
     const interval = setInterval(() => {
       refreshMe();
       loadNotifications().catch(() => {});
+      loadLatestReport().catch(() => {});
     }, PARTNER_POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [authStatus, refreshMe, loadNotifications]);
+  }, [authStatus, refreshMe, loadNotifications, loadLatestReport]);
 
   // JS timers pause while the app is backgrounded, so the interval above alone
   // misses a change that happened while this device was locked/backgrounded —
@@ -52,10 +56,11 @@ export default function TabsLayout() {
       if (nextState === 'active') {
         refreshMe();
         loadNotifications().catch(() => {});
+        loadLatestReport().catch(() => {});
       }
     });
     return () => subscription.remove();
-  }, [authStatus, refreshMe, loadNotifications]);
+  }, [authStatus, refreshMe, loadNotifications, loadLatestReport]);
 
   const previousPartnerRef = useRef(partner);
   useEffect(() => {
