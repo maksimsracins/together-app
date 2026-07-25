@@ -73,10 +73,6 @@ export default function RootLayout() {
           name="profile/edit"
           options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
         />
-        <Stack.Screen
-          name="report/history"
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
         <Stack.Screen name="profile/partner" />
         <Stack.Screen name="notifications" />
       </Stack>

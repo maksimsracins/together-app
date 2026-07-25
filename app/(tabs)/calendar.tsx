@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
-import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import {
@@ -79,6 +78,7 @@ export default function CalendarScreen() {
   const isGenerating = reportStatus === 'loading';
 
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [summaryVisible, setSummaryVisible] = useState(false);
   const [reportWeekday, setReportWeekday] = useState<number | null>(null);
   const [reportHour, setReportHour] = useState<number | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -371,15 +371,35 @@ export default function CalendarScreen() {
         />
       </Card>
 
-      <Button
-        label="История отчётов"
-        onPress={() => router.push('/report/history')}
-        variant="outline"
-        icon={<Ionicons name="time-outline" size={17} color={colors.ink} />}
-        style={{ marginBottom: spacing.lg }}
-      />
+      {r && (
+        <Button
+          label="Ваша история недели"
+          onPress={() => setSummaryVisible(true)}
+          variant="outline"
+          icon={<Ionicons name="book-outline" size={17} color={colors.ink} />}
+          style={{ marginBottom: spacing.lg }}
+        />
+      )}
 
-      {r && <ReportSummaryCard narrative={r.narrative} narrativeDeep={r.narrativeDeep} />}
+      <Modal
+        visible={summaryVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSummaryVisible(false)}
+      >
+        <View style={styles.pickerOverlay}>
+          <Pressable style={styles.pickerBackdrop} onPress={() => setSummaryVisible(false)} />
+          <View style={styles.pickerSheet}>
+            <View style={styles.pickerSheetHeader}>
+              <View style={{ width: 60 }} />
+              <Pressable onPress={() => setSummaryVisible(false)}>
+                <Text style={styles.pickerDone}>Готово</Text>
+              </Pressable>
+            </View>
+            {r && <ReportSummaryCard narrative={r.narrative} narrativeDeep={r.narrativeDeep} />}
+          </View>
+        </View>
+      </Modal>
 
       <Card style={{ marginTop: spacing.xl }}>
         <View style={styles.weekHeader}>

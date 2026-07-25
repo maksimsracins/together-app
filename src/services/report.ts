@@ -23,20 +23,4 @@ export function getLatestReport() {
   return api<ReportEnvelope | null>('/api/report/latest');
 }
 
-export interface ReportHistoryItem {
-  id: string;
-  weekId: string;
-  weekLabel: string;
-  generatedAt: string;
-  narrative: string;
-}
-
-export function getReportHistory() {
-  return api<ReportHistoryItem[]>('/api/report/history');
-}
-
-export function getReportHistoryDetail(id: string) {
-  return api<ReportEnvelope>(`/api/report/history/${id}`);
-}
-
 export type { EmotionKey };
