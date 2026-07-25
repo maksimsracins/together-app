@@ -28,10 +28,11 @@ export default function ReportSummary() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle} numberOfLines={1}>{r?.weekLabel ?? 'Отчёт'}</Text>
         <Pressable onPress={() => router.back()} style={styles.closeBtn} hitSlop={10}>
           <Ionicons name="close" size={20} color={colors.ink} />
         </Pressable>
+        <Text style={styles.headerTitle} numberOfLines={1}>{r?.weekLabel ?? 'Отчёт'}</Text>
+        <View style={[styles.closeBtn, { backgroundColor: 'transparent' }]} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -104,7 +105,7 @@ const styles = StyleSheet.create({
     width: 36, height: 36, borderRadius: 18, backgroundColor: colors.card,
     alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: { ...type.h3, color: colors.ink, flex: 1, marginRight: spacing.md },
+  headerTitle: { ...type.h3, color: colors.ink, flex: 1, textAlign: 'center' },
   content: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xxxl, flexGrow: 1 },
   error: { ...type.bodySm, color: colors.danger, textAlign: 'center', marginBottom: spacing.lg },
   heroEmoji: { fontSize: 40, textAlign: 'center', marginBottom: spacing.md },
