@@ -26,7 +26,7 @@ import { updateCoupleSettings } from '../../src/services/couples';
 import { registerPushToken } from '../../src/services/users';
 import { ApiError } from '../../src/services/http';
 import { Entry } from '../../src/types';
-import { colors, radius, spacing, type } from '../../src/theme';
+import { colors, radius, shadow, spacing, type } from '../../src/theme';
 
 type Author = 'mine' | 'partner';
 interface Selection {
@@ -245,6 +245,7 @@ export default function CalendarScreen() {
   const weekLabel = `${format(weekCursor, 'd MMM', { locale: ru })} – ${format(endOfWeek(weekCursor, { weekStartsOn: 1 }), 'd MMM', { locale: ru })}`;
 
   return (
+    <View style={{ flex: 1 }}>
     <Screen>
       <Pressable style={styles.settingsBtn} onPress={() => setSettingsVisible(true)} hitSlop={10}>
         <Ionicons name="settings-outline" size={16} color={colors.roseDark} />
@@ -469,15 +470,27 @@ export default function CalendarScreen() {
         ))
       )}
 
-      <Button
-        label={reportSource === 'ai' ? 'Ваша история недели' : isGenerating ? 'Генерируем…' : 'Сгенерировать отчёт'}
-        onPress={() => (reportSource === 'ai' ? setSummaryVisible(true) : generateReport())}
-        variant="outline"
-        icon={<Ionicons name={reportSource === 'ai' ? 'book-outline' : 'sparkles-outline'} size={17} color={colors.ink} />}
-        loading={isGenerating}
-        style={styles.aiButton}
-      />
-      {reportStatus === 'error' && <Text style={styles.aiError}>⚠️ {reportError}</Text>}
+      <View style={{ height: 76 }} />
+    </Screen>
+
+      {reportStatus === 'error' && (
+        <Text style={[styles.aiError, styles.bottomError]}>⚠️ {reportError}</Text>
+      )}
+
+      <Pressable
+        style={styles.bottomBar}
+        onPress={() => (r ? setSummaryVisible(true) : generateReport())}
+        disabled={isGenerating}
+      >
+        {isGenerating ? (
+          <ActivityIndicator size="small" color={colors.white} />
+        ) : (
+          <Ionicons name={r ? 'book-outline' : 'sparkles-outline'} size={18} color={colors.white} />
+        )}
+        <Text style={styles.bottomBarLabel}>
+          {isGenerating ? 'Генерируем…' : r ? 'Ваша история недели' : 'Сгенерировать отчёт'}
+        </Text>
+      </Pressable>
 
       <Modal
         visible={summaryVisible}
@@ -504,7 +517,7 @@ export default function CalendarScreen() {
           </View>
         </View>
       </Modal>
-    </Screen>
+    </View>
   );
 }
 
@@ -545,8 +558,20 @@ const styles = StyleSheet.create({
   },
   notifyRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.xl },
   notifyError: { ...type.bodySm, color: colors.danger, marginTop: spacing.md },
-  aiButton: { marginTop: spacing.xl, paddingVertical: 10 },
   aiError: { ...type.bodySm, color: colors.danger, textAlign: 'center', marginTop: spacing.xs },
+  bottomError: {
+    position: 'absolute', bottom: 84, left: spacing.xl, right: spacing.xl,
+    backgroundColor: colors.cream, borderRadius: radius.md, paddingVertical: spacing.xs,
+  },
+  bottomBar: {
+    position: 'absolute', bottom: spacing.lg, left: spacing.xl, right: spacing.xl,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.rose, borderRadius: radius.pill, paddingVertical: 14,
+    ...shadow.soft,
+  },
+  bottomBarLabel: {
+    ...type.bodySemibold, fontFamily: type.bodySemibold.fontFamily, color: colors.white, marginLeft: spacing.sm,
+  },
   weekHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md,
   },
