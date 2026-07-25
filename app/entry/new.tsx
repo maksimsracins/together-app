@@ -7,7 +7,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { TypePicker } from '../../src/components/TypePicker';
 import { EmotionPicker } from '../../src/components/EmotionPicker';
-import { Button } from '../../src/components/Button';
 import { useAppStore } from '../../src/store/useAppStore';
 import { ApiError } from '../../src/services/http';
 import { listAllEntries } from '../../src/services/entries';
@@ -142,16 +141,33 @@ export default function NewEntry() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.header}>
-        <Text style={styles.title}>{locked ? 'Запись' : isEditing ? 'Изменить запись' : 'Новая запись'}</Text>
-        <View style={{ flexDirection: 'row' }}>
-          {isEditing && !locked && (
-            <Pressable onPress={handleDelete} style={[styles.closeBtn, { marginRight: spacing.sm }]} hitSlop={10}>
-              <Ionicons name="trash-outline" size={18} color={colors.danger} />
-            </Pressable>
-          )}
+        <View style={styles.headerSide}>
           <Pressable onPress={() => router.back()} style={styles.closeBtn} hitSlop={10}>
             <Ionicons name="close" size={20} color={colors.ink} />
           </Pressable>
+          {isEditing && !locked && (
+            <Pressable onPress={handleDelete} style={[styles.closeBtn, { marginLeft: spacing.sm }]} hitSlop={10}>
+              <Ionicons name="trash-outline" size={18} color={colors.danger} />
+            </Pressable>
+          )}
+        </View>
+
+        <Text style={styles.title} numberOfLines={1}>
+          {locked ? 'Запись' : isEditing ? 'Изменить запись' : 'Новая запись'}
+        </Text>
+
+        <View style={[styles.headerSide, { justifyContent: 'flex-end' }]}>
+          {!locked && (
+            <Pressable onPress={handleSave} disabled={!canSave || saving} hitSlop={10}>
+              {saving ? (
+                <ActivityIndicator size="small" color={colors.roseDark} />
+              ) : (
+                <Text style={[styles.saveText, !canSave && styles.saveTextDisabled]}>
+                  {isEditing ? 'Сохранить' : 'Создать'}
+                </Text>
+              )}
+            </Pressable>
+          )}
         </View>
       </View>
 
@@ -219,16 +235,6 @@ export default function NewEntry() {
         </View>
 
         {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
-
-        {!locked && (
-          <Button
-            label={isEditing ? 'Сохранить изменения' : 'Сохранить'}
-            onPress={handleSave}
-            disabled={!canSave || saving}
-            loading={saving}
-            style={{ marginTop: spacing.lg }}
-          />
-        )}
       </ScrollView>
       )}
       </KeyboardAvoidingView>
@@ -242,11 +248,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.xl, paddingVertical: spacing.md,
   },
-  title: { ...type.h3, color: colors.ink },
+  title: { ...type.h3, color: colors.ink, flex: 1, textAlign: 'center' },
+  headerSide: { flexDirection: 'row', alignItems: 'center', minWidth: 44 },
   closeBtn: {
     width: 36, height: 36, borderRadius: 18, backgroundColor: colors.card,
     alignItems: 'center', justifyContent: 'center',
   },
+  saveText: { ...type.bodyLg, fontFamily: type.bodyBold.fontFamily, color: colors.roseDark },
+  saveTextDisabled: { color: colors.inkMuted },
   content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xxxl },
   label: { ...type.label, color: colors.inkMuted, textTransform: 'uppercase', marginBottom: spacing.md },
   textWrap: {
