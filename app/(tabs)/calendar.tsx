@@ -26,7 +26,7 @@ interface Selection {
   author: Author;
 }
 
-const WEEKDAY_LABELS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+const WEEKDAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 export default function CalendarScreen() {
   const partnerEntries = useAppStore((s) => s.partnerEntries);
@@ -88,54 +88,67 @@ export default function CalendarScreen() {
           </Pressable>
         </View>
 
-        {partner && (
-          <View style={styles.columnHeader}>
-            <View style={{ flex: 1 }} />
-            <Text style={[styles.columnLabel, { color: colors.roseDark }]}>Я</Text>
-            <Text style={[styles.columnLabel, { color: colors.skyDark }]} numberOfLines={1}>{partner.name}</Text>
+        <View style={styles.gridRow}>
+          <View style={styles.rowLabelCell} />
+          {weekDays.map((day) => (
+            <View key={day.toISOString()} style={styles.dayHeaderCell}>
+              <Text style={[styles.dayHeaderWeekday, isTodayFn(day) && { color: colors.roseDark }]}>
+                {WEEKDAY_SHORT[(day.getDay() + 6) % 7]}
+              </Text>
+              <Text style={[styles.dayHeaderDate, isTodayFn(day) && { color: colors.roseDark }]}>
+                {format(day, 'd')}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.gridRow}>
+          <View style={styles.rowLabelCell}>
+            <Text style={[styles.rowLabelText, { color: colors.roseDark }]}>Я</Text>
           </View>
-        )}
-
-        {weekDays.map((day) => {
-          const mineActive = selected.author === 'mine' && isSameDay(day, selected.date);
-          const partnerActive = selected.author === 'partner' && isSameDay(day, selected.date);
-          return (
-            <View key={day.toISOString()} style={styles.dayRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.dayLabel, isTodayFn(day) && { color: colors.roseDark }]}>
-                  {WEEKDAY_LABELS[(day.getDay() + 6) % 7]}
-                </Text>
-                <Text style={styles.dayDate}>{format(day, 'd MMMM', { locale: ru })}</Text>
-              </View>
-
+          {weekDays.map((day) => {
+            const active = selected.author === 'mine' && isSameDay(day, selected.date);
+            return (
               <Pressable
-                style={[
-                  styles.cell,
-                  { backgroundColor: mineActive ? colors.rose : colors.roseMist },
-                ]}
+                key={day.toISOString()}
+                style={styles.dayCellWrap}
                 onPress={() => setSelected({ date: day, author: 'mine' })}
               >
-                {hasEntry(myEntries, day) && (
-                  <View style={[styles.dot, { backgroundColor: mineActive ? colors.white : colors.roseDark }]} />
-                )}
+                <View style={[styles.cell, { backgroundColor: active ? colors.rose : colors.roseMist }]}>
+                  {hasEntry(myEntries, day) && (
+                    <View style={[styles.dot, { backgroundColor: active ? colors.white : colors.roseDark }]} />
+                  )}
+                </View>
               </Pressable>
+            );
+          })}
+        </View>
 
-              {partner && (
+        {partner && (
+          <View style={styles.gridRow}>
+            <View style={styles.rowLabelCell}>
+              <Text style={[styles.rowLabelText, { color: colors.skyDark }]} numberOfLines={1}>
+                {partner.name}
+              </Text>
+            </View>
+            {weekDays.map((day) => {
+              const active = selected.author === 'partner' && isSameDay(day, selected.date);
+              return (
                 <Pressable
-                  style={[
-                    styles.cell,
-                    { backgroundColor: partnerActive ? colors.skyDark : colors.skyMist },
-                  ]}
+                  key={day.toISOString()}
+                  style={styles.dayCellWrap}
                   onPress={() => setSelected({ date: day, author: 'partner' })}
                 >
-                  {hasEntry(partnerEntries, day) && (
-                    <View style={[styles.dot, { backgroundColor: partnerActive ? colors.white : colors.skyDark }]} />
-                  )}
+                  <View style={[styles.cell, { backgroundColor: active ? colors.skyDark : colors.skyMist }]}>
+                    {hasEntry(partnerEntries, day) && (
+                      <View style={[styles.dot, { backgroundColor: active ? colors.white : colors.skyDark }]} />
+                    )}
+                  </View>
                 </Pressable>
-              )}
-            </View>
-          );
-        })}
+              );
+            })}
+          </View>
+        )}
       </Card>
 
       <Text style={styles.selectedLabel}>
@@ -173,18 +186,17 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   weekLabel: { ...type.bodySemibold, fontFamily: type.bodySemibold.fontFamily, color: colors.ink },
-  columnHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
-  columnLabel: {
-    ...type.label, fontSize: 11, textTransform: 'uppercase', width: 40, textAlign: 'center', marginLeft: spacing.sm,
+  gridRow: {
+    flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs,
   },
-  dayRow: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm,
-    borderTopWidth: 1, borderTopColor: colors.border,
-  },
-  dayLabel: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.ink },
-  dayDate: { ...type.bodySm, color: colors.inkMuted, marginTop: 1 },
+  rowLabelCell: { width: 56 },
+  rowLabelText: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily },
+  dayHeaderCell: { flex: 1, alignItems: 'center' },
+  dayHeaderWeekday: { ...type.label, fontSize: 11, color: colors.inkMuted, textTransform: 'uppercase' },
+  dayHeaderDate: { ...type.bodySm, color: colors.inkMuted, marginTop: 1 },
+  dayCellWrap: { flex: 1, alignItems: 'center' },
   cell: {
-    width: 40, height: 40, borderRadius: radius.md, marginLeft: spacing.sm,
+    width: 36, height: 36, borderRadius: radius.md,
     alignItems: 'center', justifyContent: 'center',
   },
   dot: { width: 6, height: 6, borderRadius: 3 },
