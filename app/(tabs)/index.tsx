@@ -9,7 +9,7 @@ import { useAppStore } from '../../src/store/useAppStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useNotificationsStore } from '../../src/store/useNotificationsStore';
 import { getCoupleSettings } from '../../src/services/couples';
-import { colors, radius, shadow, spacing, type } from '../../src/theme';
+import { colors, fonts, radius, shadow, spacing, type } from '../../src/theme';
 import { greeting, nextReportDate } from '../../src/utils/week';
 
 function pad(n: number) {
@@ -203,9 +203,9 @@ const styles = StyleSheet.create({
     minWidth: 56, alignItems: 'center', backgroundColor: colors.card,
     borderRadius: radius.md, paddingVertical: spacing.sm,
   },
-  timerValue: { ...type.h2, color: colors.ink, fontVariant: ['tabular-nums'] },
+  timerValue: { fontFamily: fonts.bodyBold, fontSize: 24, color: colors.ink, fontVariant: ['tabular-nums'] },
   timerLabel: { ...type.bodySm, fontSize: 11, color: colors.sageDark, marginTop: 2 },
-  timerColon: { ...type.h2, color: colors.sage, marginHorizontal: 4 },
+  timerColon: { fontFamily: fonts.bodyBold, fontSize: 24, color: colors.sage, marginHorizontal: 4 },
   reportCard: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: colors.card, borderRadius: radius.lg,
