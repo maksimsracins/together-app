@@ -30,6 +30,7 @@ interface UpdateProfileBody {
   birthdate?: string | null;
   occupation?: string | null;
   habits?: string | null;
+  city?: string | null;
   journalReminderEnabled?: boolean;
 }
 
@@ -67,6 +68,7 @@ usersRouter.patch('/me', async (req: AuthedRequest, res) => {
       ...(body.birthdate !== undefined && { birthdate: body.birthdate ? new Date(body.birthdate) : null }),
       ...(body.occupation !== undefined && { occupation: body.occupation }),
       ...(body.habits !== undefined && { habits: body.habits }),
+      ...(body.city !== undefined && { city: body.city }),
       ...(body.journalReminderEnabled !== undefined && { journalReminderEnabled: body.journalReminderEnabled }),
     },
   });

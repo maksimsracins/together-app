@@ -7,6 +7,7 @@ import { generateWeeklyReport } from '../openai';
 import { sendPushNotification } from '../push';
 import { ensureCoupleContext, loadCoupleContext } from './couples';
 import { EntryInput, ProfileContext } from '../types';
+import { getWeatherSummary, WeatherSummary } from '../weather';
 import { Couple, User } from '@prisma/client';
 
 export const reportRouter = Router();
@@ -102,6 +103,26 @@ function formatWindowLabel(start: Date, end: Date) {
   return `${startStr} – ${endStr}`;
 }
 
+function formatWeatherForPrompt(w: WeatherSummary | null): string | undefined {
+  return w ? `${w.condition}, ${w.minTemp}–${w.maxTemp}°C` : undefined;
+}
+
+// Weather is captured once at generation time (keyed by user id, since the
+// same stored report is later viewed by either partner and "mine" flips
+// depending on who's asking) and read back unchanged afterwards -- it
+// describes what the weather actually was during that period, not "now".
+function resolveWeather(
+  reportJson: { weatherByUserId?: Record<string, WeatherSummary | null> },
+  meId: string,
+  partnerId: string | undefined | null
+) {
+  const map = reportJson.weatherByUserId ?? {};
+  return {
+    mine: map[meId] ?? null,
+    partner: partnerId ? map[partnerId] ?? null : null,
+  };
+}
+
 type CoupleCtx = NonNullable<Awaited<ReturnType<typeof ensureCoupleContext>>>;
 
 // Both partners share one report, so both get notified when it's ready —
@@ -151,6 +172,11 @@ export async function runReportGeneration(ctx: CoupleCtx) {
     ? (JSON.parse(lastReport.reportJson) as { narrative?: string }).narrative
     : undefined;
 
+  const [weatherMe, weatherPartner] = await Promise.all([
+    getWeatherSummary(me.city, windowStart, now),
+    partner ? getWeatherSummary(partner.city, windowStart, now) : Promise.resolve(null),
+  ]);
+
   const result = await generateWeeklyReport({
     weekLabel,
     userAName: isA ? me.name : partner?.name ?? 'Партнёр',
@@ -160,10 +186,20 @@ export async function runReportGeneration(ctx: CoupleCtx) {
     profileA: buildProfileContext(isA ? me : partner),
     profileB: buildProfileContext(isA ? partner : me),
     previousNarrative,
+    weatherA: formatWeatherForPrompt(isA ? weatherMe : weatherPartner),
+    weatherB: formatWeatherForPrompt(isA ? weatherPartner : weatherMe),
   });
 
+  const weatherByUserId: Record<string, WeatherSummary | null> = { [me.id]: weatherMe };
+  if (partner) weatherByUserId[partner.id] = weatherPartner;
+
   const created = await db.weeklyReport.create({
-    data: { coupleId: couple.id, weekId: now.toISOString(), weekLabel, reportJson: JSON.stringify(result) },
+    data: {
+      coupleId: couple.id,
+      weekId: now.toISOString(),
+      weekLabel,
+      reportJson: JSON.stringify({ ...result, weatherByUserId }),
+    },
   });
 
   const reportedIds = [...myEntries, ...partnerEntries].map((e) => e.id);
@@ -176,8 +212,10 @@ export async function runReportGeneration(ctx: CoupleCtx) {
     weekLabel,
     report: {
       narrative: result.narrative,
+      insight: result.insight,
       myEntries: toDisplayEntries(myEntries),
       partnerEntries: toDisplayEntries(partnerEntries),
+      weather: { mine: weatherMe, partner: weatherPartner },
     },
   };
 }
@@ -237,8 +275,10 @@ reportRouter.get('/latest', async (req: AuthedRequest, res) => {
     generatedAt: latest.createdAt.toISOString(),
     report: {
       narrative: parsed.narrative,
+      insight: parsed.insight ?? '',
       myEntries: toDisplayEntries(myEntries),
       partnerEntries: toDisplayEntries(partnerEntries),
+      weather: resolveWeather(parsed, me.id, partner?.id),
     },
   });
 });
@@ -279,8 +319,10 @@ reportRouter.get('/history/:id', async (req: AuthedRequest, res) => {
     generatedAt: report.createdAt.toISOString(),
     report: {
       narrative: parsed.narrative,
+      insight: parsed.insight ?? '',
       myEntries: toDisplayEntries(myEntries),
       partnerEntries: toDisplayEntries(partnerEntries),
+      weather: resolveWeather(parsed, me.id, partner?.id),
     },
   });
 });

@@ -35,6 +35,7 @@ export default function EditProfile() {
   const [birthdate, setBirthdate] = useState<Date | null>(user.birthdate ? parseISO(user.birthdate) : null);
   const [occupation, setOccupation] = useState(user.occupation ?? '');
   const [habits, setHabits] = useState(user.habits ?? '');
+  const [city, setCity] = useState(user.city ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,6 +66,7 @@ export default function EditProfile() {
         birthdate: birthdate ? format(birthdate, 'yyyy-MM-dd') : null,
         occupation: occupation.trim() || null,
         habits: habits.trim() || null,
+        city: city.trim() || null,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       router.back();
@@ -296,6 +298,16 @@ export default function EditProfile() {
           textAlignVertical="top"
         />
         <Text style={styles.hint}>Возраст, работа и привычки помогают AI точнее разбирать ваш отчёт</Text>
+
+        <Text style={[styles.label, { marginTop: spacing.lg }]}>Город</Text>
+        <TextInput
+          style={styles.input}
+          value={city}
+          onChangeText={setCity}
+          placeholder="Например: Москва"
+          placeholderTextColor={colors.inkMuted}
+        />
+        <Text style={styles.hint}>Погода вашего города появится в отчёте недели</Text>
 
         <DateField
           label="Дата рождения"

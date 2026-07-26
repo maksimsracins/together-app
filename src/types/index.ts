@@ -51,6 +51,7 @@ export interface AppUser {
   birthdate?: string | null;
   occupation?: string | null;
   habits?: string | null;
+  city?: string | null;
   journalReminderEnabled?: boolean;
   coupleId?: string | null;
 }
@@ -66,10 +67,20 @@ export interface WeeklyReportEntry {
   hasAudio: boolean;
 }
 
+export interface WeatherSummary {
+  city: string;
+  minTemp: number;
+  maxTemp: number;
+  condition: string;
+  emoji: string;
+}
+
 export interface WeeklyReport {
   id: string;
   weekLabel: string;
   myEntries: WeeklyReportEntry[];
   partnerEntries: WeeklyReportEntry[];
   narrative: string;
+  insight: string;
+  weather: { mine: WeatherSummary | null; partner: WeatherSummary | null };
 }

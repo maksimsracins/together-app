@@ -14,6 +14,7 @@ export function serializeUser(user: User) {
     birthdate: user.birthdate?.toISOString().slice(0, 10) ?? null,
     occupation: user.occupation,
     habits: user.habits,
+    city: user.city,
     journalReminderEnabled: user.journalReminderEnabled,
     coupleId: user.coupleId,
   };

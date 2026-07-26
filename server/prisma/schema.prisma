@@ -25,6 +25,7 @@ model User {
   birthdate             DateTime?
   occupation            String?
   habits                String?
+  city                  String?
   journalReminderEnabled  Boolean   @default(true)
   lastJournalReminderSentAt DateTime?
   createdAt             DateTime  @default(now())

@@ -20,6 +20,7 @@ export interface ProfilePatch {
   birthdate?: string | null;
   occupation?: string | null;
   habits?: string | null;
+  city?: string | null;
   journalReminderEnabled?: boolean;
 }
 

@@ -34,8 +34,11 @@ export interface GenerateReportRequest {
   profileA: ProfileContext;
   profileB: ProfileContext;
   previousNarrative?: string;
+  weatherA?: string;
+  weatherB?: string;
 }
 
 export interface GenerateReportResponse {
   narrative: string;
+  insight: string;
 }

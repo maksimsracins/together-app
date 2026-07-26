@@ -51,6 +51,45 @@ function BarLine({ name, value, max, color }: { name: string; value: number; max
   );
 }
 
+// Buckets entries by calendar day (not weekday name) since the report window
+// is a rolling "since last report" span, not always Mon-Sun -- a real date
+// per column is the only thing that stays correct if that window ever drifts.
+function buildDailyActivity(mine: WeeklyReportEntry[], partnerEntries: WeeklyReportEntry[]) {
+  const dayKey = (iso: string) => iso.slice(0, 10);
+  const days = new Map<string, { mine: number; partner: number }>();
+  for (const e of mine) {
+    const k = dayKey(e.createdAt);
+    const cur = days.get(k) ?? { mine: 0, partner: 0 };
+    cur.mine += 1;
+    days.set(k, cur);
+  }
+  for (const e of partnerEntries) {
+    const k = dayKey(e.createdAt);
+    const cur = days.get(k) ?? { mine: 0, partner: 0 };
+    cur.partner += 1;
+    days.set(k, cur);
+  }
+  return Array.from(days.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, counts]) => ({ date, ...counts }));
+}
+
+function DayColumn({ date, mine, partner, max, hasPartner }: { date: string; mine: number; partner: number; max: number; hasPartner: boolean }) {
+  const barMaxHeight = 44;
+  const mineHeight = max > 0 ? Math.max((mine / max) * barMaxHeight, mine > 0 ? 4 : 0) : 0;
+  const partnerHeight = max > 0 ? Math.max((partner / max) * barMaxHeight, partner > 0 ? 4 : 0) : 0;
+  const label = new Date(date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'numeric' });
+  return (
+    <View style={styles.dayCol}>
+      <View style={styles.dayBars}>
+        <View style={[styles.dayBar, { height: mineHeight, backgroundColor: colors.rose }]} />
+        {hasPartner && <View style={[styles.dayBar, { height: partnerHeight, backgroundColor: colors.sky }]} />}
+      </View>
+      <Text style={styles.dayColLabel}>{label}</Text>
+    </View>
+  );
+}
+
 function StatBlock({
   icon,
   label,
@@ -99,6 +138,8 @@ export default function ReportSummary() {
           myEntries: envelope.report.myEntries,
           partnerEntries: envelope.report.partnerEntries,
           narrative: envelope.report.narrative,
+          insight: envelope.report.insight,
+          weather: envelope.report.weather,
         });
       })
       .catch(() => setHistoricalError('Не удалось загрузить отчёт'))
@@ -120,6 +161,9 @@ export default function ReportSummary() {
         moodPartner: partner ? dominantEmotion(r.partnerEntries) : null,
       }
     : null;
+
+  const dailyActivity = r ? buildDailyActivity(r.myEntries, partner ? r.partnerEntries : []) : [];
+  const dailyMax = Math.max(...dailyActivity.map((d) => Math.max(d.mine, d.partner)), 1);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -169,6 +213,37 @@ export default function ReportSummary() {
 
             <Text style={styles.narrative}>{r.narrative}</Text>
 
+            {(r.weather.mine || r.weather.partner) && (
+              <View style={styles.weatherRow}>
+                {r.weather.mine && (
+                  <View style={styles.weatherChip}>
+                    <Text style={styles.weatherEmoji}>{r.weather.mine.emoji}</Text>
+                    <Text style={styles.weatherText}>
+                      Я, {r.weather.mine.city}: {r.weather.mine.minTemp}–{r.weather.mine.maxTemp}°
+                    </Text>
+                  </View>
+                )}
+                {r.weather.partner && (
+                  <View style={styles.weatherChip}>
+                    <Text style={styles.weatherEmoji}>{r.weather.partner.emoji}</Text>
+                    <Text style={styles.weatherText}>
+                      {partnerName}, {r.weather.partner.city}: {r.weather.partner.minTemp}–{r.weather.partner.maxTemp}°
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {!!r.insight && (
+              <View style={styles.insightBox}>
+                <View style={styles.insightHeaderRow}>
+                  <Ionicons name="sparkles-outline" size={14} color={colors.inkSoft} />
+                  <Text style={styles.insightLabel}>Заметили совпадение</Text>
+                </View>
+                <Text style={styles.insightText}>{r.insight}</Text>
+              </View>
+            )}
+
             {stats && (
               <View style={styles.statsSection}>
                 <Text style={styles.statsTitle}>Неделя в цифрах</Text>
@@ -217,6 +292,24 @@ export default function ReportSummary() {
                     )}
                   </View>
                 )}
+
+                {dailyActivity.length > 1 && (
+                  <View style={styles.dayChartBlock}>
+                    <Text style={styles.statLabel}>Активность по дням</Text>
+                    <View style={styles.dayChartRow}>
+                      {dailyActivity.map((d) => (
+                        <DayColumn
+                          key={d.date}
+                          date={d.date}
+                          mine={d.mine}
+                          partner={d.partner}
+                          max={dailyMax}
+                          hasPartner={!!partner}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                )}
               </View>
             )}
 
@@ -254,6 +347,23 @@ const styles = StyleSheet.create({
   },
   refreshText: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.roseDark, marginLeft: 4 },
   narrative: { ...type.bodyLg, color: colors.ink, lineHeight: 27 },
+  weatherRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.lg },
+  weatherChip: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.skyMist,
+    borderRadius: radius.pill, paddingVertical: 6, paddingHorizontal: spacing.md,
+    marginRight: spacing.sm, marginBottom: spacing.sm,
+  },
+  weatherEmoji: { fontSize: 14, marginRight: 6 },
+  weatherText: { ...type.bodySm, color: colors.skyDark },
+  insightBox: {
+    marginTop: spacing.lg, backgroundColor: colors.sandMist,
+    borderRadius: radius.lg, padding: spacing.lg,
+  },
+  insightHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs },
+  insightLabel: {
+    ...type.label, color: colors.inkSoft, textTransform: 'uppercase', marginLeft: 6,
+  },
+  insightText: { ...type.body, color: colors.inkSoft, lineHeight: 21 },
   statsSection: {
     marginTop: spacing.xl, paddingTop: spacing.xl,
     borderTopWidth: 1, borderTopColor: colors.border,
@@ -281,6 +391,15 @@ const styles = StyleSheet.create({
   },
   moodEmoji: { fontSize: 15, marginRight: 6 },
   moodText: { ...type.bodySm, color: colors.roseDark },
+  dayChartBlock: { marginTop: spacing.md },
+  dayChartRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end',
+    marginTop: spacing.md, paddingHorizontal: 2,
+  },
+  dayCol: { alignItems: 'center' },
+  dayBars: { flexDirection: 'row', alignItems: 'flex-end', height: 44 },
+  dayBar: { width: 5, borderRadius: 3, marginHorizontal: 1.5 },
+  dayColLabel: { ...type.bodySm, fontSize: 10, color: colors.inkMuted, marginTop: 4 },
   historyLink: {
     flexDirection: 'row', alignItems: 'center', alignSelf: 'center',
     marginTop: spacing.xl, paddingTop: spacing.lg,
