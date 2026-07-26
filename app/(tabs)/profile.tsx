@@ -22,7 +22,7 @@ export default function Profile() {
     : null;
 
   return (
-    <Screen>
+    <Screen ambient>
       <Pressable style={styles.editBtn} onPress={() => router.push('/profile/edit')} hitSlop={10}>
         <Ionicons name="pencil-outline" size={16} color={colors.roseDark} />
         <Text style={styles.editBtnLabel}>Редактировать</Text>

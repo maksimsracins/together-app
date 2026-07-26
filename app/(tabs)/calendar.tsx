@@ -101,7 +101,7 @@ export default function CalendarScreen() {
   const weekLabel = `${format(weekCursor, 'd MMM', { locale: ru })} – ${format(endOfWeek(weekCursor, { weekStartsOn: 1 }), 'd MMM', { locale: ru })}`;
 
   return (
-    <Screen>
+    <Screen ambient>
       <Text style={styles.title}>Календарь</Text>
       <Text style={styles.subtitle}>
         {partner ? 'Выберите день и кто именно — вы или партнёр' : 'Выберите день, чтобы увидеть записи'}

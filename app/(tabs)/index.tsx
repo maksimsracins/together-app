@@ -53,7 +53,7 @@ export default function Home() {
 
   return (
     <View style={styles.root}>
-      <Screen scroll={false} style={{ backgroundColor: 'transparent' }}>
+      <Screen scroll={false} style={{ backgroundColor: 'transparent' }} ambient>
       <View style={styles.headerRow}>
         <View style={{ flex: 1 }}>
           <Text style={styles.greeting}>
