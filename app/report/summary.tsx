@@ -14,10 +14,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../../src/components/Avatar';
+import { Button } from '../../src/components/Button';
 import { Mascot } from '../../src/components/Mascot';
 import { useAppStore } from '../../src/store/useAppStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
-import { getReportHistoryDetail } from '../../src/services/report';
+import { generateReport, getReportHistoryDetail } from '../../src/services/report';
 import { emotionMeta } from '../../src/data/catalog';
 import { pluralDays } from '../../src/utils/week';
 import { EmotionKey, WeeklyReport, WeeklyReportEntry } from '../../src/types';
@@ -167,7 +168,26 @@ export default function ReportSummary() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const user = useAuthStore((s) => s.user)!;
   const partner = useAuthStore((s) => s.partner);
-  const { weeklyReport: liveReport } = useAppStore();
+  const { weeklyReport: liveReport, loadLatestReport } = useAppStore();
+
+  const [testGenerating, setTestGenerating] = useState(false);
+  const [testError, setTestError] = useState<string | null>(null);
+
+  // Dev-only: reports otherwise only ever arrive via the schedule (see
+  // Home's countdown settings) -- this lets us trigger one on demand while
+  // testing, without exposing manual generation to real users.
+  const handleTestGenerate = async () => {
+    setTestGenerating(true);
+    setTestError(null);
+    try {
+      await generateReport();
+      await loadLatestReport();
+    } catch (err) {
+      setTestError(err instanceof Error ? err.message : 'Не удалось сгенерировать отчёт');
+    } finally {
+      setTestGenerating(false);
+    }
+  };
 
   const [historical, setHistorical] = useState<WeeklyReport | null>(null);
   const [loadingHistorical, setLoadingHistorical] = useState(!!id);
@@ -228,6 +248,8 @@ export default function ReportSummary() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {historicalError && <Text style={styles.error}>⚠️ {historicalError}</Text>}
 
+        {__DEV__ && testError && <Text style={styles.error}>⚠️ {testError}</Text>}
+
         {loadingHistorical ? (
           <ActivityIndicator style={{ marginTop: spacing.xxl }} color={colors.roseDark} />
         ) : !r ? (
@@ -237,6 +259,15 @@ export default function ReportSummary() {
             <Text style={styles.emptyHint}>
               AI соберёт историю недели автоматически, в день и час, указанные в настройках отчёта
             </Text>
+            {__DEV__ && !id && (
+              <Button
+                label={testGenerating ? 'Генерируем…' : '🧪 Сгенерировать (тест)'}
+                onPress={handleTestGenerate}
+                loading={testGenerating}
+                variant="outline"
+                style={{ marginTop: spacing.xl }}
+              />
+            )}
           </View>
         ) : (
           <>
@@ -249,6 +280,19 @@ export default function ReportSummary() {
                 <Text style={styles.subtitle}>
                   {totalEntries} {pluralEntries(totalEntries)} за этот период
                 </Text>
+              )}
+
+              {__DEV__ && !id && (
+                <Pressable onPress={handleTestGenerate} disabled={testGenerating} hitSlop={6} style={styles.testLink}>
+                  {testGenerating ? (
+                    <ActivityIndicator size="small" color={colors.roseDark} />
+                  ) : (
+                    <Ionicons name="flask-outline" size={13} color={colors.roseDark} />
+                  )}
+                  <Text style={styles.testLinkText}>
+                    {testGenerating ? 'Генерируем…' : 'Перегенерировать (тест)'}
+                  </Text>
+                </Pressable>
               )}
 
               <View style={styles.narrativeCard}>
@@ -403,6 +447,10 @@ const styles = StyleSheet.create({
   heroBadgeEmoji: { fontSize: 28 },
   title: { ...type.h2, color: colors.ink, textAlign: 'center' },
   subtitle: { ...type.bodySm, color: colors.inkMuted, textAlign: 'center', marginTop: 4 },
+  testLink: {
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'center', marginTop: spacing.md,
+  },
+  testLinkText: { ...type.bodySm, color: colors.roseDark, marginLeft: 4 },
   narrativeCard: {
     marginTop: spacing.xl, backgroundColor: colors.cardSoft,
     borderRadius: radius.xl, padding: spacing.xl,

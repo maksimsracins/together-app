@@ -23,6 +23,12 @@ export interface ReportHistoryItem {
   generatedAt: string;
 }
 
+// Manual trigger, used only by the dev-only test button -- not part of the
+// normal user flow (reports otherwise only ever arrive via the schedule).
+export function generateReport() {
+  return api<ReportEnvelope>('/api/report/generate', { method: 'POST' });
+}
+
 export function getLatestReport() {
   return api<ReportEnvelope | null>('/api/report/latest');
 }
