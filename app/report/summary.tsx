@@ -1,13 +1,25 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  AccessibilityInfo,
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../src/components/Button';
+import { Avatar } from '../../src/components/Avatar';
 import { useAppStore } from '../../src/store/useAppStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { getReportHistoryDetail } from '../../src/services/report';
 import { emotionMeta } from '../../src/data/catalog';
+import { pluralDays } from '../../src/utils/week';
 import { EmotionKey, WeeklyReport, WeeklyReportEntry } from '../../src/types';
 import { colors, radius, spacing, type } from '../../src/theme';
 
@@ -17,6 +29,15 @@ function wordCount(entries: WeeklyReportEntry[]) {
 
 function photoCount(entries: WeeklyReportEntry[]) {
   return entries.filter((e) => e.hasPhoto).length;
+}
+
+function pluralEntries(n: number) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 14) return 'записей';
+  if (mod10 === 1) return 'запись';
+  if (mod10 >= 2 && mod10 <= 4) return 'записи';
+  return 'записей';
 }
 
 // The one categorical (non-quantitative) stat -- which emotion shows up most
@@ -38,86 +59,113 @@ function dominantEmotion(entries: WeeklyReportEntry[]): EmotionKey | null {
   return best;
 }
 
-function BarLine({ name, value, max, color }: { name: string; value: number; max: number; color: string }) {
-  const pct = max > 0 ? Math.max((value / max) * 100, value > 0 ? 6 : 0) : 0;
-  return (
-    <View style={styles.barLine}>
-      <Text style={styles.barName} numberOfLines={1}>{name}</Text>
-      <View style={styles.barTrack}>
-        <View style={[styles.barFill, { width: `${pct}%`, backgroundColor: color }]} />
-      </View>
-      <Text style={styles.barValue}>{value}</Text>
-    </View>
-  );
-}
-
-// Buckets entries by calendar day (not weekday name) since the report window
-// is a rolling "since last report" span, not always Mon-Sun -- a real date
-// per column is the only thing that stays correct if that window ever drifts.
-function buildDailyActivity(mine: WeeklyReportEntry[], partnerEntries: WeeklyReportEntry[]) {
-  const dayKey = (iso: string) => iso.slice(0, 10);
-  const days = new Map<string, { mine: number; partner: number }>();
-  for (const e of mine) {
-    const k = dayKey(e.createdAt);
-    const cur = days.get(k) ?? { mine: 0, partner: 0 };
-    cur.mine += 1;
-    days.set(k, cur);
-  }
-  for (const e of partnerEntries) {
-    const k = dayKey(e.createdAt);
-    const cur = days.get(k) ?? { mine: 0, partner: 0 };
-    cur.partner += 1;
-    days.set(k, cur);
-  }
-  return Array.from(days.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, counts]) => ({ date, ...counts }));
-}
-
-function DayColumn({ date, mine, partner, max, hasPartner }: { date: string; mine: number; partner: number; max: number; hasPartner: boolean }) {
-  const barMaxHeight = 44;
-  const mineHeight = max > 0 ? Math.max((mine / max) * barMaxHeight, mine > 0 ? 4 : 0) : 0;
-  const partnerHeight = max > 0 ? Math.max((partner / max) * barMaxHeight, partner > 0 ? 4 : 0) : 0;
-  const label = new Date(date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'numeric' });
-  return (
-    <View style={styles.dayCol}>
-      <View style={styles.dayBars}>
-        <View style={[styles.dayBar, { height: mineHeight, backgroundColor: colors.rose }]} />
-        {hasPartner && <View style={[styles.dayBar, { height: partnerHeight, backgroundColor: colors.sky }]} />}
-      </View>
-      <Text style={styles.dayColLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function StatBlock({
-  icon,
-  label,
-  mine,
-  partner,
-  partnerName,
-}: {
+interface Fact {
   icon: string;
-  label: string;
-  mine: number;
-  partner: number | null;
-  partnerName: string;
-}) {
-  const max = Math.max(mine, partner ?? 0, 1);
-  return (
-    <View style={styles.statBlock}>
-      <View style={styles.statHeaderRow}>
-        <Text style={styles.statIcon}>{icon}</Text>
-        <Text style={styles.statLabel}>{label}</Text>
-      </View>
-      <BarLine name="Я" value={mine} max={max} color={colors.rose} />
-      {partner !== null && <BarLine name={partnerName} value={partner} max={max} color={colors.sky} />}
-    </View>
-  );
+  text: string;
+}
+
+// Plain, objective observations pulled straight from the numbers -- no
+// interpretation, no "why," nothing an AI would need to hedge about. This is
+// the difference between this list and `insight`: these are facts, insight
+// is the one analyst-style hypothesis.
+function buildFacts(mine: WeeklyReportEntry[], partnerEntries: WeeklyReportEntry[], hasPartner: boolean, partnerName: string): Fact[] {
+  const facts: Fact[] = [];
+  const all = [...mine, ...partnerEntries];
+  if (all.length === 0) return facts;
+
+  const byDay = new Map<string, number>();
+  for (const e of all) {
+    const k = e.createdAt.slice(0, 10);
+    byDay.set(k, (byDay.get(k) ?? 0) + 1);
+  }
+  if (byDay.size > 1) {
+    let bestDay = '';
+    let bestCount = 0;
+    for (const [day, count] of byDay) {
+      if (count > bestCount) {
+        bestDay = day;
+        bestCount = count;
+      }
+    }
+    const label = new Date(bestDay).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+    facts.push({ icon: '📌', text: `Самый насыщенный день — ${label}: ${bestCount} ${pluralEntries(bestCount)}` });
+  }
+
+  if (hasPartner) {
+    const mineDays = new Set(mine.map((e) => e.createdAt.slice(0, 10)));
+    const partnerDays = new Set(partnerEntries.map((e) => e.createdAt.slice(0, 10)));
+    let together = 0;
+    for (const d of mineDays) if (partnerDays.has(d)) together += 1;
+    if (together > 0) {
+      facts.push({ icon: '💞', text: `Вы писали в один и тот же день ${together} ${pluralDays(together)} на этой неделе` });
+    }
+  }
+
+  let longest: { entry: WeeklyReportEntry; words: number } | null = null;
+  for (const e of all) {
+    const words = e.text.trim().split(/\s+/).filter(Boolean).length;
+    if (!longest || words > longest.words) longest = { entry: e, words };
+  }
+  if (longest && longest.words >= 15) {
+    const isMine = mine.includes(longest.entry);
+    const who = hasPartner ? (isMine ? 'у вас' : `у ${partnerName}`) : 'у вас';
+    facts.push({ icon: '📖', text: `Самая подробная запись — ${who}, ${longest.words} слов` });
+  }
+
+  if (all.length >= 4) {
+    const bucketOf = (hour: number) => (hour < 6 ? 'ночью' : hour < 12 ? 'утром' : hour < 18 ? 'днём' : 'вечером');
+    const counts = new Map<string, number>();
+    for (const e of all) {
+      const b = bucketOf(new Date(e.createdAt).getHours());
+      counts.set(b, (counts.get(b) ?? 0) + 1);
+    }
+    let bestBucket = '';
+    let bestCount = 0;
+    for (const [b, c] of counts) {
+      if (c > bestCount) {
+        bestBucket = b;
+        bestCount = c;
+      }
+    }
+    if (bestCount / all.length >= 0.5) {
+      const text = hasPartner ? `Чаще всего вы оба писали ${bestBucket}` : `Вы чаще всего делитесь ${bestBucket}`;
+      facts.push({ icon: '⏰', text });
+    }
+  }
+
+  return facts.slice(0, 4);
+}
+
+function useStagger(count: number) {
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const anims = useRef(Array.from({ length: count }, () => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => {
+        setReduceMotion(enabled);
+        if (enabled) {
+          anims.forEach((a) => a.setValue(1));
+        } else {
+          Animated.stagger(
+            90,
+            anims.map((a) => Animated.timing(a, { toValue: 1, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true }))
+          ).start();
+        }
+      })
+      .catch(() => anims.forEach((a) => a.setValue(1)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return anims.map((a) => ({
+    opacity: a,
+    transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [reduceMotion ? 0 : 14, 0] }) }],
+  }));
 }
 
 export default function ReportSummary() {
   const { id } = useLocalSearchParams<{ id?: string }>();
+  const user = useAuthStore((s) => s.user)!;
   const partner = useAuthStore((s) => s.partner);
   const { weeklyReport: liveReport, generateReport, reportStatus, reportError } = useAppStore();
   const isGenerating = reportStatus === 'loading';
@@ -147,23 +195,26 @@ export default function ReportSummary() {
   }, [id]);
 
   const r = id ? historical : liveReport;
+  const hasPartner = !!partner;
   const partnerName = partner?.name ?? 'Партнёр';
 
   const stats = r
     ? {
         entriesMine: r.myEntries.length,
-        entriesPartner: partner ? r.partnerEntries.length : null,
+        entriesPartner: hasPartner ? r.partnerEntries.length : null,
         wordsMine: wordCount(r.myEntries),
-        wordsPartner: partner ? wordCount(r.partnerEntries) : null,
+        wordsPartner: hasPartner ? wordCount(r.partnerEntries) : null,
         photosMine: photoCount(r.myEntries),
-        photosPartner: partner ? photoCount(r.partnerEntries) : null,
+        photosPartner: hasPartner ? photoCount(r.partnerEntries) : null,
         moodMine: dominantEmotion(r.myEntries),
-        moodPartner: partner ? dominantEmotion(r.partnerEntries) : null,
+        moodPartner: hasPartner ? dominantEmotion(r.partnerEntries) : null,
       }
     : null;
 
-  const dailyActivity = r ? buildDailyActivity(r.myEntries, partner ? r.partnerEntries : []) : [];
-  const dailyMax = Math.max(...dailyActivity.map((d) => Math.max(d.mine, d.partner)), 1);
+  const facts = r ? buildFacts(r.myEntries, r.partnerEntries, hasPartner, partnerName) : [];
+  const totalEntries = r ? r.myEntries.length + r.partnerEntries.length : 0;
+
+  const stagger = useStagger(3);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -197,120 +248,111 @@ export default function ReportSummary() {
           </View>
         ) : (
           <>
-            <Text style={styles.heroEmoji}>💌</Text>
-            <Text style={styles.title}>Ваша история недели</Text>
-
-            {!id && (
-              <Pressable style={styles.refresh} onPress={generateReport} disabled={isGenerating} hitSlop={6}>
-                {isGenerating ? (
-                  <ActivityIndicator size="small" color={colors.roseDark} />
-                ) : (
-                  <Ionicons name="refresh-outline" size={14} color={colors.roseDark} />
-                )}
-                <Text style={styles.refreshText}>{isGenerating ? 'Генерируем…' : 'Обновить'}</Text>
-              </Pressable>
-            )}
-
-            <Text style={styles.narrative}>{r.narrative}</Text>
-
-            {(r.weather.mine || r.weather.partner) && (
-              <View style={styles.weatherRow}>
-                {r.weather.mine && (
-                  <View style={styles.weatherChip}>
-                    <Text style={styles.weatherEmoji}>{r.weather.mine.emoji}</Text>
-                    <Text style={styles.weatherText}>
-                      Я, {r.weather.mine.city}: {r.weather.mine.minTemp}–{r.weather.mine.maxTemp}°
-                    </Text>
-                  </View>
-                )}
-                {r.weather.partner && (
-                  <View style={styles.weatherChip}>
-                    <Text style={styles.weatherEmoji}>{r.weather.partner.emoji}</Text>
-                    <Text style={styles.weatherText}>
-                      {partnerName}, {r.weather.partner.city}: {r.weather.partner.minTemp}–{r.weather.partner.maxTemp}°
-                    </Text>
-                  </View>
-                )}
+            <Animated.View style={stagger[0]}>
+              <View style={styles.heroBadge}>
+                <Text style={styles.heroBadgeEmoji}>💌</Text>
               </View>
-            )}
+              <Text style={styles.title}>Ваша история недели</Text>
+              {totalEntries > 0 && (
+                <Text style={styles.subtitle}>
+                  {totalEntries} {pluralEntries(totalEntries)} за этот период
+                </Text>
+              )}
 
-            {!!r.insight && (
-              <View style={styles.insightBox}>
-                <View style={styles.insightHeaderRow}>
-                  <Ionicons name="sparkles-outline" size={14} color={colors.inkSoft} />
-                  <Text style={styles.insightLabel}>Заметили совпадение</Text>
+              {!id && (
+                <Pressable style={styles.refresh} onPress={generateReport} disabled={isGenerating} hitSlop={6}>
+                  {isGenerating ? (
+                    <ActivityIndicator size="small" color={colors.roseDark} />
+                  ) : (
+                    <Ionicons name="refresh-outline" size={14} color={colors.roseDark} />
+                  )}
+                  <Text style={styles.refreshText}>{isGenerating ? 'Генерируем…' : 'Обновить'}</Text>
+                </Pressable>
+              )}
+
+              <View style={styles.narrativeCard}>
+                <Text style={styles.narrativeMark}>❝</Text>
+                <Text style={styles.narrative}>{r.narrative}</Text>
+              </View>
+            </Animated.View>
+
+            <Animated.View style={stagger[1]}>
+              {(r.weather.mine || r.weather.partner) && (
+                <View style={styles.weatherRow}>
+                  {r.weather.mine && (
+                    <View style={styles.weatherChip}>
+                      <Text style={styles.weatherEmoji}>{r.weather.mine.emoji}</Text>
+                      <Text style={styles.weatherText}>
+                        Я, {r.weather.mine.city}: {r.weather.mine.minTemp}–{r.weather.mine.maxTemp}°
+                      </Text>
+                    </View>
+                  )}
+                  {r.weather.partner && (
+                    <View style={styles.weatherChip}>
+                      <Text style={styles.weatherEmoji}>{r.weather.partner.emoji}</Text>
+                      <Text style={styles.weatherText}>
+                        {partnerName}, {r.weather.partner.city}: {r.weather.partner.minTemp}–{r.weather.partner.maxTemp}°
+                      </Text>
+                    </View>
+                  )}
                 </View>
-                <Text style={styles.insightText}>{r.insight}</Text>
-              </View>
-            )}
+              )}
+
+              {!!r.insight && (
+                <View style={styles.insightBox}>
+                  <View style={styles.insightHeaderRow}>
+                    <Ionicons name="sparkles-outline" size={14} color={colors.inkSoft} />
+                    <Text style={styles.insightLabel}>Заметили совпадение</Text>
+                  </View>
+                  <Text style={styles.insightText}>{r.insight}</Text>
+                </View>
+              )}
+
+              {facts.length > 0 && (
+                <View style={styles.factsSection}>
+                  <Text style={styles.sectionLabel}>Любопытные факты</Text>
+                  {facts.map((f, i) => (
+                    <View key={i} style={[styles.factRow, i === facts.length - 1 && styles.factRowLast]}>
+                      <Text style={styles.factIcon}>{f.icon}</Text>
+                      <Text style={styles.factText}>{f.text}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </Animated.View>
 
             {stats && (
-              <View style={styles.statsSection}>
-                <Text style={styles.statsTitle}>Неделя в цифрах</Text>
+              <Animated.View style={[styles.statsSection, stagger[2]]}>
+                <Text style={styles.sectionLabel}>Кто сколько писал</Text>
 
-                <StatBlock
-                  icon="✍️"
-                  label="Записи"
-                  mine={stats.entriesMine}
-                  partner={stats.entriesPartner}
-                  partnerName={partnerName}
-                />
-                <StatBlock
-                  icon="📝"
-                  label="Слов написано"
-                  mine={stats.wordsMine}
-                  partner={stats.wordsPartner}
-                  partnerName={partnerName}
-                />
+                <View style={styles.statTableHeader}>
+                  <View style={{ flex: 1 }} />
+                  <View style={styles.statValueCol}>
+                    <Avatar emoji={user.avatarEmoji} uri={user.avatarUri} size={30} />
+                  </View>
+                  {hasPartner && (
+                    <View style={styles.statValueCol}>
+                      <Avatar emoji={partner!.avatarEmoji} uri={partner!.avatarUri} size={30} />
+                    </View>
+                  )}
+                </View>
+
+                <StatTableRow icon="✍️" label="Записи" mine={stats.entriesMine} partner={stats.entriesPartner} hasPartner={hasPartner} />
+                <StatTableRow icon="📝" label="Слов" mine={stats.wordsMine} partner={stats.wordsPartner} hasPartner={hasPartner} />
                 {(stats.photosMine > 0 || (stats.photosPartner ?? 0) > 0) && (
-                  <StatBlock
-                    icon="📷"
-                    label="Фото добавлено"
-                    mine={stats.photosMine}
-                    partner={stats.photosPartner}
-                    partnerName={partnerName}
+                  <StatTableRow icon="📷" label="Фото" mine={stats.photosMine} partner={stats.photosPartner} hasPartner={hasPartner} />
+                )}
+                {(stats.moodMine || stats.moodPartner) && (
+                  <StatTableRow
+                    icon="💭"
+                    label="Настроение"
+                    mine={stats.moodMine ? emotionMeta(stats.moodMine).emoji : '—'}
+                    partner={stats.moodPartner ? emotionMeta(stats.moodPartner).emoji : hasPartner ? '—' : null}
+                    hasPartner={hasPartner}
+                    last
                   />
                 )}
-
-                {(stats.moodMine || stats.moodPartner) && (
-                  <View style={styles.moodRow}>
-                    {stats.moodMine && (
-                      <View style={styles.moodChip}>
-                        <Text style={styles.moodEmoji}>{emotionMeta(stats.moodMine).emoji}</Text>
-                        <Text style={styles.moodText}>
-                          Я чаще всего — {emotionMeta(stats.moodMine).label.toLowerCase()}
-                        </Text>
-                      </View>
-                    )}
-                    {stats.moodPartner && (
-                      <View style={styles.moodChip}>
-                        <Text style={styles.moodEmoji}>{emotionMeta(stats.moodPartner).emoji}</Text>
-                        <Text style={styles.moodText}>
-                          {partnerName} чаще всего — {emotionMeta(stats.moodPartner).label.toLowerCase()}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                {dailyActivity.length > 1 && (
-                  <View style={styles.dayChartBlock}>
-                    <Text style={styles.statLabel}>Активность по дням</Text>
-                    <View style={styles.dayChartRow}>
-                      {dailyActivity.map((d) => (
-                        <DayColumn
-                          key={d.date}
-                          date={d.date}
-                          mine={d.mine}
-                          partner={d.partner}
-                          max={dailyMax}
-                          hasPartner={!!partner}
-                        />
-                      ))}
-                    </View>
-                  </View>
-                )}
-              </View>
+              </Animated.View>
             )}
 
             {!id && (
@@ -327,6 +369,39 @@ export default function ReportSummary() {
   );
 }
 
+function StatTableRow({
+  icon,
+  label,
+  mine,
+  partner,
+  hasPartner,
+  last,
+}: {
+  icon: string;
+  label: string;
+  mine: number | string;
+  partner: number | string | null;
+  hasPartner: boolean;
+  last?: boolean;
+}) {
+  return (
+    <View style={[styles.statTableRow, last && styles.statTableRowLast]}>
+      <View style={styles.statRowLabelWrap}>
+        <Text style={styles.statRowIcon}>{icon}</Text>
+        <Text style={styles.statRowLabel}>{label}</Text>
+      </View>
+      <View style={styles.statValueCol}>
+        <Text style={styles.statRowValue}>{mine}</Text>
+      </View>
+      {hasPartner && (
+        <View style={styles.statValueCol}>
+          <Text style={styles.statRowValue}>{partner}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.cream },
   header: {
@@ -340,14 +415,26 @@ const styles = StyleSheet.create({
   headerTitle: { ...type.h3, color: colors.ink, flex: 1, textAlign: 'center' },
   content: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xxxl, flexGrow: 1 },
   error: { ...type.bodySm, color: colors.danger, textAlign: 'center', marginBottom: spacing.lg },
-  heroEmoji: { fontSize: 40, textAlign: 'center', marginBottom: spacing.md },
-  title: { ...type.h2, color: colors.ink, textAlign: 'center', marginBottom: spacing.md },
+  heroBadge: {
+    width: 64, height: 64, borderRadius: 32, backgroundColor: colors.roseMist,
+    alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: spacing.md,
+  },
+  heroBadgeEmoji: { fontSize: 28 },
+  title: { ...type.h2, color: colors.ink, textAlign: 'center' },
+  subtitle: { ...type.bodySm, color: colors.inkMuted, textAlign: 'center', marginTop: 4 },
   refresh: {
-    flexDirection: 'row', alignItems: 'center', alignSelf: 'center', marginBottom: spacing.xl,
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'center', marginTop: spacing.md,
   },
   refreshText: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.roseDark, marginLeft: 4 },
+  narrativeCard: {
+    marginTop: spacing.xl, backgroundColor: colors.cardSoft,
+    borderRadius: radius.xl, padding: spacing.xl,
+  },
+  narrativeMark: {
+    ...type.h1, color: colors.roseLight, lineHeight: 28, marginBottom: -spacing.sm,
+  },
   narrative: { ...type.bodyLg, color: colors.ink, lineHeight: 27 },
-  weatherRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.lg },
+  weatherRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.xl },
   weatherChip: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.skyMist,
     borderRadius: radius.pill, paddingVertical: 6, paddingHorizontal: spacing.md,
@@ -364,42 +451,33 @@ const styles = StyleSheet.create({
     ...type.label, color: colors.inkSoft, textTransform: 'uppercase', marginLeft: 6,
   },
   insightText: { ...type.body, color: colors.inkSoft, lineHeight: 21 },
+  sectionLabel: {
+    ...type.label, color: colors.inkMuted, textTransform: 'uppercase', marginBottom: spacing.md,
+  },
+  factsSection: { marginTop: spacing.xl },
+  factRow: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    paddingBottom: spacing.md, marginBottom: spacing.md,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
+  },
+  factRowLast: { borderBottomWidth: 0, marginBottom: 0, paddingBottom: 0 },
+  factIcon: { fontSize: 17, marginRight: spacing.md },
+  factText: { ...type.body, color: colors.ink, flex: 1, lineHeight: 21 },
   statsSection: {
     marginTop: spacing.xl, paddingTop: spacing.xl,
     borderTopWidth: 1, borderTopColor: colors.border,
   },
-  statsTitle: {
-    ...type.label, color: colors.inkMuted, textTransform: 'uppercase', marginBottom: spacing.lg,
+  statTableHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
+  statValueCol: { width: 56, alignItems: 'center' },
+  statTableRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  statBlock: { marginBottom: spacing.lg },
-  statHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
-  statIcon: { fontSize: 15, marginRight: 6 },
-  statLabel: { ...type.bodySemibold, fontFamily: type.bodySemibold.fontFamily, color: colors.ink },
-  barLine: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  barName: { ...type.bodySm, color: colors.inkMuted, width: 64 },
-  barTrack: {
-    flex: 1, height: 8, borderRadius: radius.pill, backgroundColor: colors.card,
-    overflow: 'hidden', marginHorizontal: spacing.sm,
-  },
-  barFill: { height: '100%', borderRadius: radius.pill },
-  barValue: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.ink, width: 24, textAlign: 'right' },
-  moodRow: { marginTop: spacing.xs },
-  moodChip: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.roseMist,
-    borderRadius: radius.pill, paddingVertical: spacing.sm, paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm, alignSelf: 'flex-start',
-  },
-  moodEmoji: { fontSize: 15, marginRight: 6 },
-  moodText: { ...type.bodySm, color: colors.roseDark },
-  dayChartBlock: { marginTop: spacing.md },
-  dayChartRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end',
-    marginTop: spacing.md, paddingHorizontal: 2,
-  },
-  dayCol: { alignItems: 'center' },
-  dayBars: { flexDirection: 'row', alignItems: 'flex-end', height: 44 },
-  dayBar: { width: 5, borderRadius: 3, marginHorizontal: 1.5 },
-  dayColLabel: { ...type.bodySm, fontSize: 10, color: colors.inkMuted, marginTop: 4 },
+  statTableRowLast: { borderBottomWidth: 0 },
+  statRowLabelWrap: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  statRowIcon: { fontSize: 15, marginRight: 8 },
+  statRowLabel: { ...type.body, color: colors.inkSoft },
+  statRowValue: { ...type.h3, fontFamily: type.bodyBold.fontFamily, color: colors.ink },
   historyLink: {
     flexDirection: 'row', alignItems: 'center', alignSelf: 'center',
     marginTop: spacing.xl, paddingTop: spacing.lg,
