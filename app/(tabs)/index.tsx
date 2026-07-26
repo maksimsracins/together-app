@@ -10,9 +10,20 @@ import { useAuthStore } from '../../src/store/useAuthStore';
 import { useNotificationsStore } from '../../src/store/useNotificationsStore';
 import { getCoupleSettings } from '../../src/services/couples';
 import { colors, radius, shadow, spacing, type } from '../../src/theme';
-import { daysUntilNextReport, greeting, pluralDays } from '../../src/utils/week';
+import { greeting, nextReportDate } from '../../src/utils/week';
 
-const WEEKDAY_DOTS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+function pad(n: number) {
+  return n.toString().padStart(2, '0');
+}
+
+function TimerBox({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={styles.timerBox}>
+      <Text style={styles.timerValue}>{value}</Text>
+      <Text style={styles.timerLabel}>{label}</Text>
+    </View>
+  );
+}
 
 export default function Home() {
   const user = useAuthStore((s) => s.user)!;
@@ -22,19 +33,25 @@ export default function Home() {
   const reportStatus = useAppStore((s) => s.reportStatus);
   const isGenerating = reportStatus === 'loading';
   const g = greeting();
-  const [daysLeft, setDaysLeft] = useState<number | null>(null);
-  const [reportWeekday, setReportWeekday] = useState<number | null>(null);
+  const [target, setTarget] = useState<Date | null>(null);
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     getCoupleSettings()
-      .then((s) => {
-        setDaysLeft(daysUntilNextReport(s.reportWeekday, s.reportHour));
-        setReportWeekday(s.reportWeekday);
-      })
+      .then((s) => setTarget(nextReportDate(s.reportWeekday, s.reportHour)))
       .catch(() => {});
   }, []);
 
-  const todayIso = new Date().getDay() === 0 ? 7 : new Date().getDay();
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const diffMs = target ? Math.max(0, target.getTime() - now.getTime()) : null;
+  const days = diffMs !== null ? Math.floor(diffMs / 86400000) : null;
+  const hours = diffMs !== null ? Math.floor((diffMs % 86400000) / 3600000) : null;
+  const minutes = diffMs !== null ? Math.floor((diffMs % 3600000) / 60000) : null;
+  const seconds = diffMs !== null ? Math.floor((diffMs % 60000) / 1000) : null;
 
   return (
     <View style={styles.root}>
@@ -81,39 +98,21 @@ export default function Home() {
       </View>
 
       <Card tone="sage" style={styles.countdownCard}>
-        <View style={styles.countdownTop}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.countdownLabel}>
-              {partner ? `Скоро откроются события ${partner.name}` : 'До следующего отчёта'}
-            </Text>
-            <Text style={styles.countdownValue}>
-              {daysLeft === null ? '—' : daysLeft === 0 ? 'Сегодня' : `${daysLeft} ${pluralDays(daysLeft)}`}
-            </Text>
-          </View>
-          <Text style={styles.countdownEmoji}>💌</Text>
-        </View>
+        <Text style={styles.countdownLabel}>
+          {partner ? `Скоро откроются события ${partner.name}` : 'До следующего отчёта'}
+        </Text>
 
-        {reportWeekday !== null && (
-          <View style={styles.weekDots}>
-            {WEEKDAY_DOTS.map((label, i) => {
-              const iso = i + 1;
-              const isReveal = iso === reportWeekday;
-              const isToday = iso === todayIso;
-              return (
-                <View key={label} style={styles.weekDotItem}>
-                  <View
-                    style={[
-                      styles.weekDot,
-                      isReveal && styles.weekDotReveal,
-                      isToday && !isReveal && styles.weekDotToday,
-                    ]}
-                  >
-                    {isReveal && <Ionicons name="heart" size={9} color={colors.white} />}
-                  </View>
-                  <Text style={[styles.weekDotLabel, isToday && styles.weekDotLabelToday]}>{label}</Text>
-                </View>
-              );
-            })}
+        {diffMs === null ? (
+          <Text style={styles.countdownValue}>—</Text>
+        ) : (
+          <View style={styles.timerRow}>
+            <TimerBox value={String(days)} label={days === 1 ? 'день' : 'дней'} />
+            <Text style={styles.timerColon}>:</Text>
+            <TimerBox value={pad(hours!)} label="час" />
+            <Text style={styles.timerColon}>:</Text>
+            <TimerBox value={pad(minutes!)} label="мин" />
+            <Text style={styles.timerColon}>:</Text>
+            <TimerBox value={pad(seconds!)} label="сек" />
           </View>
         )}
       </Card>
@@ -197,23 +196,16 @@ const styles = StyleSheet.create({
   },
   invitePlaceholderText: { ...type.h2, color: colors.inkMuted },
   countdownCard: { marginBottom: spacing.xl },
-  countdownTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  countdownLabel: { ...type.bodySm, color: colors.sageDark },
-  countdownValue: { ...type.h2, color: colors.ink, marginTop: 4 },
-  countdownEmoji: { fontSize: 30 },
-  weekDots: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    marginTop: spacing.lg, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.sage + '33',
+  countdownLabel: { ...type.bodySm, color: colors.sageDark, marginBottom: spacing.md },
+  countdownValue: { ...type.h2, color: colors.ink },
+  timerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  timerBox: {
+    minWidth: 56, alignItems: 'center', backgroundColor: colors.card,
+    borderRadius: radius.md, paddingVertical: spacing.sm,
   },
-  weekDotItem: { alignItems: 'center' },
-  weekDot: {
-    width: 20, height: 20, borderRadius: 10, backgroundColor: colors.card,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
-  },
-  weekDotToday: { borderWidth: 2, borderColor: colors.sageDark },
-  weekDotReveal: { backgroundColor: colors.rose },
-  weekDotLabel: { fontSize: 10, color: colors.sageDark, opacity: 0.7 },
-  weekDotLabelToday: { fontFamily: type.bodySemibold.fontFamily, opacity: 1 },
+  timerValue: { ...type.h2, color: colors.ink, fontVariant: ['tabular-nums'] },
+  timerLabel: { ...type.bodySm, fontSize: 11, color: colors.sageDark, marginTop: 2 },
+  timerColon: { ...type.h2, color: colors.sage, marginHorizontal: 4 },
   reportCard: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: colors.card, borderRadius: radius.lg,

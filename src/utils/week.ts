@@ -15,6 +15,20 @@ export function daysUntilNextReport(weekday: number, hour: number): number {
   return diff;
 }
 
+// Exact next occurrence of the couple's report weekday/hour, for a live
+// second-by-second countdown -- same viewer's-clock approximation as
+// daysUntilNextReport, just resolved to a concrete Date instead of a day count.
+export function nextReportDate(weekday: number, hour: number, from: Date = new Date()): Date {
+  const currentIso = from.getDay() === 0 ? 7 : from.getDay();
+  let diffDays = weekday - currentIso;
+  if (diffDays < 0) diffDays += 7;
+  const target = new Date(from);
+  target.setDate(from.getDate() + diffDays);
+  target.setHours(hour, 0, 0, 0);
+  if (target.getTime() <= from.getTime()) target.setDate(target.getDate() + 7);
+  return target;
+}
+
 export function pluralDays(n: number) {
   const mod10 = n % 10;
   const mod100 = n % 100;
