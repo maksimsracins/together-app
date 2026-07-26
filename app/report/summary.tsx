@@ -22,7 +22,7 @@ import { generateReport, getReportHistoryDetail } from '../../src/services/repor
 import { emotionMeta } from '../../src/data/catalog';
 import { pluralDays } from '../../src/utils/week';
 import { EmotionKey, WeeklyReport, WeeklyReportEntry } from '../../src/types';
-import { colors, radius, spacing, type } from '../../src/theme';
+import { colors, emotionColors, radius, spacing, type } from '../../src/theme';
 
 function wordCount(entries: WeeklyReportEntry[]) {
   return entries.reduce((sum, e) => sum + e.text.trim().split(/\s+/).filter(Boolean).length, 0);
@@ -58,6 +58,97 @@ function dominantEmotion(entries: WeeklyReportEntry[]): EmotionKey | null {
     }
   }
   return best;
+}
+
+// Rough emotional valence per emotion, -2..2, used only to plot a shape --
+// not shown as a number anywhere, so it doesn't need to be precise, just
+// consistently ordered (clearly-positive > mixed > clearly-difficult).
+const EMOTION_VALENCE: Record<EmotionKey, number> = {
+  joy: 2, gratitude: 2, love: 2, calm: 1,
+  doubt: -1, sadness: -1,
+  irritation: -2, anxiety: -2, hurt: -2,
+};
+
+interface MoodPoint {
+  date: string;
+  valence: number;
+}
+
+function buildMoodByDay(all: WeeklyReportEntry[]): MoodPoint[] {
+  const byDay = new Map<string, number[]>();
+  for (const e of all) {
+    const k = e.createdAt.slice(0, 10);
+    const arr = byDay.get(k) ?? [];
+    arr.push(EMOTION_VALENCE[e.emotion] ?? 0);
+    byDay.set(k, arr);
+  }
+  return Array.from(byDay.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, vals]) => ({ date, valence: vals.reduce((s, v) => s + v, 0) / vals.length }));
+}
+
+interface EmotionSlice {
+  key: EmotionKey;
+  count: number;
+}
+
+function buildEmotionPalette(all: WeeklyReportEntry[]): EmotionSlice[] {
+  const counts = new Map<EmotionKey, number>();
+  for (const e of all) counts.set(e.emotion, (counts.get(e.emotion) ?? 0) + 1);
+  return Array.from(counts.entries())
+    .map(([key, count]) => ({ key, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+function MoodByDayChart({ points }: { points: MoodPoint[] }) {
+  return (
+    <View style={styles.moodChartRow}>
+      {points.map((p) => {
+        const magnitude = Math.min(Math.abs(p.valence), 2) / 2;
+        const barHeight = magnitude > 0.08 ? Math.max(magnitude * 26, 4) : 0;
+        const positive = p.valence > 0.08;
+        const negative = p.valence < -0.08;
+        const label = new Date(p.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'numeric' });
+        return (
+          <View key={p.date} style={styles.moodChartCol}>
+            <View style={styles.moodChartTrack}>
+              <View style={styles.moodChartBaseline} />
+              {positive && (
+                <View style={[styles.moodChartBar, { height: barHeight, bottom: '50%', backgroundColor: colors.sage }]} />
+              )}
+              {negative && (
+                <View style={[styles.moodChartBar, { height: barHeight, top: '50%', backgroundColor: colors.rose }]} />
+              )}
+            </View>
+            <Text style={styles.moodChartLabel}>{label}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function EmotionPaletteBar({ slices, total }: { slices: EmotionSlice[]; total: number }) {
+  const top = slices.slice(0, 5);
+  return (
+    <View>
+      <View style={styles.paletteBar}>
+        {top.map((s) => (
+          <View key={s.key} style={{ flex: s.count, backgroundColor: emotionColors[s.key] }} />
+        ))}
+      </View>
+      <View style={styles.paletteLegend}>
+        {top.map((s) => (
+          <View key={s.key} style={styles.paletteLegendItem}>
+            <View style={[styles.paletteDot, { backgroundColor: emotionColors[s.key] }]} />
+            <Text style={styles.paletteLegendText}>
+              {emotionMeta(s.key).label} · {Math.round((s.count / total) * 100)}%
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
 }
 
 interface Fact {
@@ -233,6 +324,10 @@ export default function ReportSummary() {
   const facts = r ? buildFacts(r.myEntries, r.partnerEntries, hasPartner, partnerName) : [];
   const totalEntries = r ? r.myEntries.length + r.partnerEntries.length : 0;
 
+  const allEntries = r ? [...r.myEntries, ...r.partnerEntries] : [];
+  const moodPoints = buildMoodByDay(allEntries);
+  const emotionSlices = buildEmotionPalette(allEntries);
+
   const stagger = useStagger(3);
 
   return (
@@ -330,6 +425,20 @@ export default function ReportSummary() {
                     <Text style={styles.insightLabel}>Заметили совпадение</Text>
                   </View>
                   <Text style={styles.insightText}>{r.insight}</Text>
+                </View>
+              )}
+
+              {emotionSlices.length > 0 && (
+                <View style={styles.paletteSection}>
+                  <Text style={styles.sectionLabel}>Эмоциональная палитра недели</Text>
+                  <EmotionPaletteBar slices={emotionSlices} total={allEntries.length} />
+                </View>
+              )}
+
+              {moodPoints.length > 1 && (
+                <View style={styles.moodSection}>
+                  <Text style={styles.sectionLabel}>Настроение по дням</Text>
+                  <MoodByDayChart points={moodPoints} />
                 </View>
               )}
 
@@ -479,6 +588,27 @@ const styles = StyleSheet.create({
   sectionLabel: {
     ...type.label, color: colors.inkMuted, textTransform: 'uppercase', marginBottom: spacing.md,
   },
+  paletteSection: { marginTop: spacing.xl },
+  paletteBar: {
+    flexDirection: 'row', height: 14, borderRadius: 7, overflow: 'hidden', backgroundColor: colors.border,
+  },
+  paletteLegend: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.md },
+  paletteLegendItem: {
+    flexDirection: 'row', alignItems: 'center', marginRight: spacing.lg, marginBottom: spacing.xs,
+  },
+  paletteDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
+  paletteLegendText: { ...type.bodySm, color: colors.inkSoft },
+  moodSection: { marginTop: spacing.xl },
+  moodChartRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end',
+  },
+  moodChartCol: { alignItems: 'center', flex: 1 },
+  moodChartTrack: { width: '100%', height: 56, alignItems: 'center' },
+  moodChartBaseline: {
+    position: 'absolute', top: '50%', left: '15%', right: '15%', height: 1, backgroundColor: colors.border,
+  },
+  moodChartBar: { position: 'absolute', width: 8, left: '50%', marginLeft: -4, borderRadius: 4 },
+  moodChartLabel: { ...type.bodySm, fontSize: 10, color: colors.inkMuted, marginTop: 4 },
   factsSection: { marginTop: spacing.xl },
   factRow: {
     flexDirection: 'row', alignItems: 'flex-start',
