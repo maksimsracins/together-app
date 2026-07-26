@@ -5,7 +5,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { TypePicker } from '../../src/components/TypePicker';
 import { EmotionPicker } from '../../src/components/EmotionPicker';
 import { useAppStore } from '../../src/store/useAppStore';
 import { ApiError } from '../../src/services/http';
@@ -14,6 +13,22 @@ import { EmotionKey, Entry, EntryType } from '../../src/types';
 import { colors, radius, spacing, type } from '../../src/theme';
 
 const MAX_LEN = 1000;
+
+// The type picker was dropped from the UI (emotion alone is the point now),
+// but the server column is still required and the AI report prompt still
+// reads it -- so we derive a reasonable one from the chosen emotion instead
+// of asking for it a second time.
+const EMOTION_TO_TYPE: Record<EmotionKey, EntryType> = {
+  joy: 'joy',
+  gratitude: 'gratitude',
+  love: 'joy',
+  calm: 'thought',
+  sadness: 'worry',
+  irritation: 'worry',
+  anxiety: 'worry',
+  hurt: 'worry',
+  doubt: 'worry',
+};
 
 export default function NewEntry() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -53,7 +68,6 @@ export default function NewEntry() {
   const existing = storeMatch ?? fetchedExisting ?? undefined;
   const locked = !!existing?.includedInReportId;
 
-  const [entryType, setEntryType] = useState<EntryType | null>(existing?.type ?? null);
   const [emotion, setEmotion] = useState<EmotionKey | null>(existing?.emotion ?? null);
   const [text, setText] = useState(existing?.text ?? '');
   const [photoUri, setPhotoUri] = useState<string | null>(existing?.photoUri ?? null);
@@ -66,7 +80,6 @@ export default function NewEntry() {
   // already had the right values on first render.
   useEffect(() => {
     if (!resolving && fetchedExisting) {
-      setEntryType(fetchedExisting.type);
       setEmotion(fetchedExisting.emotion);
       setText(fetchedExisting.text);
       setPhotoUri(fetchedExisting.photoUri);
@@ -74,7 +87,7 @@ export default function NewEntry() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolving]);
 
-  const canSave = entryType !== null && emotion !== null && text.trim().length > 0;
+  const canSave = emotion !== null && text.trim().length > 0;
 
   const handlePickPhoto = async () => {
     setError(null);
@@ -100,10 +113,10 @@ export default function NewEntry() {
   };
 
   const persistEntry = async (finalText: string) => {
-    if (!entryType || !emotion) return;
+    if (!emotion) return;
     setSaving(true);
     setError(null);
-    const payload = { type: entryType, emotion, text: finalText.trim(), tags: [], photoUri };
+    const payload = { type: EMOTION_TO_TYPE[emotion], emotion, text: finalText.trim(), tags: [], photoUri };
     try {
       if (isEditing && id) {
         await updateEntry(id, payload);
@@ -120,10 +133,6 @@ export default function NewEntry() {
   };
 
   const handleSave = async () => {
-    if (!entryType) {
-      setError('Выберите тип записи');
-      return;
-    }
     if (!emotion) {
       setError('Выберите эмоцию');
       return;
@@ -237,12 +246,7 @@ export default function NewEntry() {
         )}
 
         <View style={styles.tagSection}>
-          <Text style={styles.label}>Тип записи</Text>
-          <View pointerEvents={locked ? 'none' : 'auto'} style={locked && styles.disabled}>
-            <TypePicker value={entryType} onChange={setEntryType} />
-          </View>
-
-          <Text style={[styles.label, { marginTop: spacing.lg }]}>Эмоция</Text>
+          <Text style={styles.label}>Эмоция</Text>
           <View pointerEvents={locked ? 'none' : 'auto'} style={locked && styles.disabled}>
             <EmotionPicker value={emotion} onChange={setEmotion} />
           </View>
@@ -268,29 +272,29 @@ const styles = StyleSheet.create({
   },
   saveText: { ...type.bodyLg, fontFamily: type.bodyBold.fontFamily, color: colors.roseDark },
   saveTextDisabled: { color: colors.inkMuted },
-  content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xxxl },
-  label: { ...type.label, color: colors.inkMuted, textTransform: 'uppercase', marginBottom: spacing.md },
+  content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
+  label: { ...type.label, color: colors.inkMuted, textTransform: 'uppercase', marginBottom: spacing.sm },
   textWrap: {
     backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border,
     padding: spacing.lg,
   },
-  textInput: { ...type.bodyLg, color: colors.ink, minHeight: 150 },
+  textInput: { ...type.bodyLg, color: colors.ink, minHeight: 96 },
   counter: { ...type.bodySm, color: colors.inkMuted, textAlign: 'right', marginTop: spacing.xs },
   photoAddBtn: {
     flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start',
     borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card,
-    paddingVertical: 10, paddingHorizontal: spacing.md, marginTop: spacing.md,
+    paddingVertical: 8, paddingHorizontal: spacing.md, marginTop: spacing.sm,
   },
   photoAddText: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.roseDark, marginLeft: spacing.sm },
-  photoWrap: { marginTop: spacing.md },
-  photo: { width: '100%', height: 200, borderRadius: radius.md, backgroundColor: colors.card },
+  photoWrap: { marginTop: spacing.sm },
+  photo: { width: '100%', height: 160, borderRadius: radius.md, backgroundColor: colors.card },
   photoRemoveBtn: {
     position: 'absolute', top: spacing.sm, right: spacing.sm, width: 28, height: 28, borderRadius: 14,
     backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center',
   },
-  privacyNote: { ...type.bodySm, color: colors.inkMuted, marginTop: spacing.sm },
+  privacyNote: { ...type.bodySm, color: colors.inkMuted, marginTop: spacing.xs },
   tagSection: {
-    marginTop: spacing.xl, paddingTop: spacing.lg,
+    marginTop: spacing.lg, paddingTop: spacing.md,
     borderTopWidth: 1, borderTopColor: colors.border,
   },
   errorBanner: {
