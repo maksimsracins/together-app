@@ -14,7 +14,6 @@ interface NewEntryInput {
   hasAudio?: boolean;
 }
 
-type ReportStatus = 'idle' | 'loading' | 'error' | 'ready';
 type EntriesStatus = 'idle' | 'loading' | 'error' | 'ready';
 
 interface AppState {
@@ -29,10 +28,6 @@ interface AppState {
   partnerEntriesStatus: EntriesStatus;
 
   weeklyReport: WeeklyReport | null;
-  reportStatus: ReportStatus;
-  reportError: string | null;
-  reportSource: 'none' | 'ai';
-  reportGeneratedAt: string | null;
 
   // One shared object per couple, not per-device -- kept in sync the same way
   // as the report, so a setting either partner changes shows up for the
@@ -46,7 +41,6 @@ interface AppState {
   deleteEntry: (id: string) => Promise<void>;
   setEntryReaction: (entryId: string, emoji: string | null) => Promise<void>;
   loadLatestReport: () => Promise<void>;
-  generateReport: () => Promise<void>;
   loadCoupleSettings: () => Promise<void>;
   reset: () => void;
 }
@@ -70,10 +64,6 @@ const initialState = {
   partnerEntries: [] as Entry[],
   partnerEntriesStatus: 'idle' as EntriesStatus,
   weeklyReport: null as WeeklyReport | null,
-  reportStatus: 'idle' as ReportStatus,
-  reportError: null as string | null,
-  reportSource: 'none' as 'none' | 'ai',
-  reportGeneratedAt: null as string | null,
   coupleSettings: null as CoupleSettings | null,
 };
 
@@ -136,32 +126,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       const envelope = await reportService.getLatestReport();
       if (!envelope) return;
       const weeklyReport = buildWeeklyReport(envelope);
-      set({
-        weeklyReport,
-        reportSource: 'ai',
-        reportStatus: 'ready',
-        reportGeneratedAt: envelope.generatedAt,
-      });
+      set({ weeklyReport });
       get().loadPartnerEntries();
     } catch {
       // no report yet, or offline — keep the "not generated" empty state
-    }
-  },
-
-  generateReport: async () => {
-    set({ reportStatus: 'loading', reportError: null });
-    try {
-      const envelope = await reportService.generateReport();
-      const weeklyReport = buildWeeklyReport(envelope);
-      set({
-        weeklyReport,
-        reportStatus: 'ready',
-        reportSource: 'ai',
-        reportGeneratedAt: envelope.generatedAt,
-      });
-      get().loadPartnerEntries();
-    } catch (err) {
-      set({ reportStatus: 'error', reportError: err instanceof Error ? err.message : 'Не удалось сгенерировать отчёт' });
     }
   },
 

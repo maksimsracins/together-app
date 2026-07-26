@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/components/Screen';
@@ -30,8 +30,6 @@ export default function Home() {
   const partner = useAuthStore((s) => s.partner);
   const unreadCount = useNotificationsStore((s) => s.unreadCount);
   const weeklyReport = useAppStore((s) => s.weeklyReport);
-  const reportStatus = useAppStore((s) => s.reportStatus);
-  const isGenerating = reportStatus === 'loading';
   const g = greeting();
   const [target, setTarget] = useState<Date | null>(null);
   const [now, setNow] = useState(() => new Date());
@@ -124,16 +122,12 @@ export default function Home() {
         onPress={() => router.push('/report/summary')}
       >
         <View style={styles.reportIconWrap}>
-          {isGenerating ? (
-            <ActivityIndicator size="small" color={colors.roseDark} />
-          ) : (
-            <Ionicons name={weeklyReport ? 'book-outline' : 'sparkles-outline'} size={20} color={colors.roseDark} />
-          )}
+          <Ionicons name={weeklyReport ? 'book-outline' : 'sparkles-outline'} size={20} color={colors.roseDark} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.reportTitle}>Ваша история недели</Text>
           <Text style={styles.reportHint}>
-            {isGenerating ? 'Генерируем…' : weeklyReport ? 'Готово — можно прочитать' : 'Ещё не сгенерирована'}
+            {weeklyReport ? 'Готово — можно прочитать' : 'Появится по расписанию отчёта'}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.inkMuted} />

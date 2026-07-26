@@ -23,10 +23,6 @@ export interface ReportHistoryItem {
   generatedAt: string;
 }
 
-export function generateReport() {
-  return api<ReportEnvelope>('/api/report/generate', { method: 'POST' });
-}
-
 export function getLatestReport() {
   return api<ReportEnvelope | null>('/api/report/latest');
 }

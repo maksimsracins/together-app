@@ -13,7 +13,6 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Button } from '../../src/components/Button';
 import { Avatar } from '../../src/components/Avatar';
 import { useAppStore } from '../../src/store/useAppStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
@@ -167,8 +166,7 @@ export default function ReportSummary() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const user = useAuthStore((s) => s.user)!;
   const partner = useAuthStore((s) => s.partner);
-  const { weeklyReport: liveReport, generateReport, reportStatus, reportError } = useAppStore();
-  const isGenerating = reportStatus === 'loading';
+  const { weeklyReport: liveReport } = useAppStore();
 
   const [historical, setHistorical] = useState<WeeklyReport | null>(null);
   const [loadingHistorical, setLoadingHistorical] = useState(!!id);
@@ -227,7 +225,6 @@ export default function ReportSummary() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {!id && reportStatus === 'error' && <Text style={styles.error}>⚠️ {reportError}</Text>}
         {historicalError && <Text style={styles.error}>⚠️ {historicalError}</Text>}
 
         {loadingHistorical ? (
@@ -237,14 +234,8 @@ export default function ReportSummary() {
             <Text style={styles.emptyEmoji}>📖</Text>
             <Text style={styles.emptyTitle}>Отчёта пока нет</Text>
             <Text style={styles.emptyHint}>
-              AI разберёт ваши записи за неделю и сплетёт из них общую историю
+              AI соберёт историю недели автоматически, в день и час, указанные в настройках отчёта
             </Text>
-            <Button
-              label={isGenerating ? 'Генерируем…' : 'Сгенерировать отчёт'}
-              onPress={generateReport}
-              loading={isGenerating}
-              style={{ marginTop: spacing.xl }}
-            />
           </View>
         ) : (
           <>
@@ -257,17 +248,6 @@ export default function ReportSummary() {
                 <Text style={styles.subtitle}>
                   {totalEntries} {pluralEntries(totalEntries)} за этот период
                 </Text>
-              )}
-
-              {!id && (
-                <Pressable style={styles.refresh} onPress={generateReport} disabled={isGenerating} hitSlop={6}>
-                  {isGenerating ? (
-                    <ActivityIndicator size="small" color={colors.roseDark} />
-                  ) : (
-                    <Ionicons name="refresh-outline" size={14} color={colors.roseDark} />
-                  )}
-                  <Text style={styles.refreshText}>{isGenerating ? 'Генерируем…' : 'Обновить'}</Text>
-                </Pressable>
               )}
 
               <View style={styles.narrativeCard}>
@@ -422,10 +402,6 @@ const styles = StyleSheet.create({
   heroBadgeEmoji: { fontSize: 28 },
   title: { ...type.h2, color: colors.ink, textAlign: 'center' },
   subtitle: { ...type.bodySm, color: colors.inkMuted, textAlign: 'center', marginTop: 4 },
-  refresh: {
-    flexDirection: 'row', alignItems: 'center', alignSelf: 'center', marginTop: spacing.md,
-  },
-  refreshText: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.roseDark, marginLeft: 4 },
   narrativeCard: {
     marginTop: spacing.xl, backgroundColor: colors.cardSoft,
     borderRadius: radius.xl, padding: spacing.xl,

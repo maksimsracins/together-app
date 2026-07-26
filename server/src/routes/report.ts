@@ -220,35 +220,6 @@ export async function runReportGeneration(ctx: CoupleCtx) {
   };
 }
 
-reportRouter.post('/generate', async (req: AuthedRequest, res) => {
-  if (!process.env.OPENAI_API_KEY) {
-    res.status(500).json({ error: 'OPENAI_API_KEY is not configured on the server' });
-    return;
-  }
-
-  const ctx = await ensureCoupleContext(req.userId!);
-  if (!ctx) {
-    res.status(404).json({ error: 'Пользователь не найден' });
-    return;
-  }
-
-  try {
-    const result = await runReportGeneration(ctx);
-    if (result.status === 'empty') {
-      res.status(409).json({ error: 'Добавьте хотя бы одну запись, чтобы получить отчёт' });
-      return;
-    }
-    res.json({ id: result.id, weekId: result.generatedAt, weekLabel: result.weekLabel, generatedAt: result.generatedAt, report: result.report });
-
-    notifyCoupleReportReady(ctx.couple, ctx.me, ctx.partner).catch((err) =>
-      console.error('Failed to notify couple of new report', err)
-    );
-  } catch (err) {
-    console.error('Failed to generate weekly report', err);
-    res.status(502).json({ error: 'Не удалось сгенерировать отчёт' });
-  }
-});
-
 reportRouter.get('/latest', async (req: AuthedRequest, res) => {
   const ctx = await loadCoupleContext(req.userId!);
   if (!ctx) {
