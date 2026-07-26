@@ -10,19 +10,10 @@ import { useAuthStore } from '../../src/store/useAuthStore';
 import { useNotificationsStore } from '../../src/store/useNotificationsStore';
 import { getCoupleSettings } from '../../src/services/couples';
 import { colors, fonts, radius, shadow, spacing, type } from '../../src/theme';
-import { greeting, nextReportDate } from '../../src/utils/week';
+import { greeting, nextReportDate, pluralDays } from '../../src/utils/week';
 
 function pad(n: number) {
   return n.toString().padStart(2, '0');
-}
-
-function TimerBox({ value, label }: { value: string; label: string }) {
-  return (
-    <View style={styles.timerBox}>
-      <Text style={styles.timerValue}>{value}</Text>
-      <Text style={styles.timerLabel}>{label}</Text>
-    </View>
-  );
 }
 
 export default function Home() {
@@ -98,22 +89,24 @@ export default function Home() {
       </View>
 
       <Card tone="sage" style={styles.countdownCard}>
-        <Text style={styles.countdownLabel}>
-          {partner ? `Скоро откроются события ${partner.name}` : 'До следующего отчёта'}
-        </Text>
+        <View style={styles.countdownHeaderRow}>
+          <Ionicons name="heart" size={14} color={colors.rose} />
+          <Text style={styles.countdownLabel}>
+            {partner ? `Скоро откроются события ${partner.name}` : 'До следующего отчёта'}
+          </Text>
+        </View>
 
         {diffMs === null ? (
-          <Text style={styles.countdownValue}>—</Text>
+          <Text style={styles.countdownDays}>—</Text>
         ) : (
-          <View style={styles.timerRow}>
-            <TimerBox value={String(days)} label={days === 1 ? 'день' : 'дней'} />
-            <Text style={styles.timerColon}>:</Text>
-            <TimerBox value={pad(hours!)} label="час" />
-            <Text style={styles.timerColon}>:</Text>
-            <TimerBox value={pad(minutes!)} label="мин" />
-            <Text style={styles.timerColon}>:</Text>
-            <TimerBox value={pad(seconds!)} label="сек" />
-          </View>
+          <>
+            <Text style={styles.countdownDays}>
+              {days === 0 ? 'Уже сегодня' : `Через ${days} ${pluralDays(days!)}`}
+            </Text>
+            <Text style={styles.countdownClock}>
+              {pad(hours!)}:{pad(minutes!)}:{pad(seconds!)}
+            </Text>
+          </>
         )}
       </Card>
 
@@ -196,16 +189,15 @@ const styles = StyleSheet.create({
   },
   invitePlaceholderText: { ...type.h2, color: colors.inkMuted },
   countdownCard: { marginBottom: spacing.xl },
-  countdownLabel: { ...type.bodySm, color: colors.sageDark, marginBottom: spacing.md },
-  countdownValue: { ...type.h2, color: colors.ink },
-  timerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  timerBox: {
-    minWidth: 56, alignItems: 'center', backgroundColor: colors.card,
-    borderRadius: radius.md, paddingVertical: spacing.sm,
+  countdownHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+  countdownLabel: { ...type.bodySm, color: colors.sageDark, marginLeft: 6 },
+  countdownDays: {
+    fontFamily: fonts.bodyBold, fontSize: 22, color: colors.roseDark,
   },
-  timerValue: { fontFamily: fonts.bodyBold, fontSize: 24, color: colors.ink, fontVariant: ['tabular-nums'] },
-  timerLabel: { ...type.bodySm, fontSize: 11, color: colors.sageDark, marginTop: 2 },
-  timerColon: { fontFamily: fonts.bodyBold, fontSize: 24, color: colors.sage, marginHorizontal: 4 },
+  countdownClock: {
+    fontFamily: fonts.body, fontSize: 15, color: colors.sageDark,
+    fontVariant: ['tabular-nums'], marginTop: 2, letterSpacing: 0.5,
+  },
   reportCard: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: colors.card, borderRadius: radius.lg,
