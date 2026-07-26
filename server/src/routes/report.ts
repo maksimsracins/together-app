@@ -32,10 +32,21 @@ interface DisplayEntry {
   text: string;
   createdAt: string;
   reactionEmoji: string | null;
+  hasPhoto: boolean;
+  hasAudio: boolean;
 }
 
 function toDisplayEntries(
-  entries: { id: string; type: string; emotion: string; text: string; createdAt: Date; reactionEmoji: string | null }[]
+  entries: {
+    id: string;
+    type: string;
+    emotion: string;
+    text: string;
+    createdAt: Date;
+    reactionEmoji: string | null;
+    hasPhoto: boolean;
+    hasAudio: boolean;
+  }[]
 ): DisplayEntry[] {
   return entries
     .slice()
@@ -47,6 +58,8 @@ function toDisplayEntries(
       text: e.text,
       createdAt: e.createdAt.toISOString(),
       reactionEmoji: e.reactionEmoji,
+      hasPhoto: e.hasPhoto,
+      hasAudio: e.hasAudio,
     }));
 }
 
@@ -158,11 +171,11 @@ export async function runReportGeneration(ctx: CoupleCtx) {
 
   return {
     status: 'ok' as const,
+    id: created.id,
     generatedAt: created.createdAt.toISOString(),
     weekLabel,
     report: {
       narrative: result.narrative,
-      narrativeDeep: result.narrativeDeep,
       myEntries: toDisplayEntries(myEntries),
       partnerEntries: toDisplayEntries(partnerEntries),
     },
@@ -187,7 +200,7 @@ reportRouter.post('/generate', async (req: AuthedRequest, res) => {
       res.status(409).json({ error: 'Добавьте хотя бы одну запись, чтобы получить отчёт' });
       return;
     }
-    res.json({ weekId: result.generatedAt, weekLabel: result.weekLabel, generatedAt: result.generatedAt, report: result.report });
+    res.json({ id: result.id, weekId: result.generatedAt, weekLabel: result.weekLabel, generatedAt: result.generatedAt, report: result.report });
 
     notifyCoupleReportReady(ctx.couple, ctx.me, ctx.partner).catch((err) =>
       console.error('Failed to notify couple of new report', err)
@@ -218,12 +231,54 @@ reportRouter.get('/latest', async (req: AuthedRequest, res) => {
   const { mine: myEntries, partner: partnerEntries } = await loadReportedEntries(latest.id, me.id, partner?.id);
   const parsed = JSON.parse(latest.reportJson);
   res.json({
+    id: latest.id,
     weekId: latest.weekId,
     weekLabel: latest.weekLabel,
     generatedAt: latest.createdAt.toISOString(),
     report: {
       narrative: parsed.narrative,
-      narrativeDeep: parsed.narrativeDeep,
+      myEntries: toDisplayEntries(myEntries),
+      partnerEntries: toDisplayEntries(partnerEntries),
+    },
+  });
+});
+
+reportRouter.get('/history', async (req: AuthedRequest, res) => {
+  const ctx = await loadCoupleContext(req.userId!);
+  if (!ctx) {
+    res.json([]);
+    return;
+  }
+  const reports = await db.weeklyReport.findMany({
+    where: { coupleId: ctx.couple.id },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json(reports.map((r) => ({ id: r.id, weekLabel: r.weekLabel, generatedAt: r.createdAt.toISOString() })));
+});
+
+reportRouter.get('/history/:id', async (req: AuthedRequest, res) => {
+  const ctx = await loadCoupleContext(req.userId!);
+  if (!ctx) {
+    res.status(404).json({ error: 'Пара не найдена' });
+    return;
+  }
+  const { couple, me, partner } = ctx;
+
+  const report = await db.weeklyReport.findFirst({ where: { id: req.params.id, coupleId: couple.id } });
+  if (!report) {
+    res.status(404).json({ error: 'Отчёт не найден' });
+    return;
+  }
+
+  const { mine: myEntries, partner: partnerEntries } = await loadReportedEntries(report.id, me.id, partner?.id);
+  const parsed = JSON.parse(report.reportJson);
+  res.json({
+    id: report.id,
+    weekId: report.weekId,
+    weekLabel: report.weekLabel,
+    generatedAt: report.createdAt.toISOString(),
+    report: {
+      narrative: parsed.narrative,
       myEntries: toDisplayEntries(myEntries),
       partnerEntries: toDisplayEntries(partnerEntries),
     },

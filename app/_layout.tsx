@@ -77,6 +77,7 @@ export default function RootLayout() {
           name="report/summary"
           options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
         />
+        <Stack.Screen name="report/history" />
         <Stack.Screen name="profile/partner" />
         <Stack.Screen name="notifications" />
       </Stack>

@@ -62,12 +62,14 @@ export interface WeeklyReportEntry {
   text: string;
   createdAt: string; // ISO
   reactionEmoji: string | null;
+  hasPhoto: boolean;
+  hasAudio: boolean;
 }
 
 export interface WeeklyReport {
+  id: string;
   weekLabel: string;
   myEntries: WeeklyReportEntry[];
   partnerEntries: WeeklyReportEntry[];
   narrative: string;
-  narrativeDeep: string;
 }

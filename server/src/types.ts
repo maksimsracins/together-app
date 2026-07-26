@@ -38,5 +38,4 @@ export interface GenerateReportRequest {
 
 export interface GenerateReportResponse {
   narrative: string;
-  narrativeDeep: string;
 }

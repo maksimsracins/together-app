@@ -54,11 +54,11 @@ interface AppState {
 function buildWeeklyReport(envelope: reportService.ReportEnvelope): WeeklyReport {
   const r = envelope.report;
   return {
+    id: envelope.id,
     weekLabel: envelope.weekLabel,
     myEntries: r.myEntries,
     partnerEntries: r.partnerEntries,
     narrative: r.narrative,
-    narrativeDeep: r.narrativeDeep,
   };
 }
 
