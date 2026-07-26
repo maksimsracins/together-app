@@ -10,10 +10,19 @@ import { useAuthStore } from '../../src/store/useAuthStore';
 import { useNotificationsStore } from '../../src/store/useNotificationsStore';
 import { getCoupleSettings } from '../../src/services/couples';
 import { colors, fonts, radius, shadow, spacing, type } from '../../src/theme';
-import { greeting, nextReportDate, pluralDays } from '../../src/utils/week';
+import { greeting, nextReportDate } from '../../src/utils/week';
 
 function pad(n: number) {
   return n.toString().padStart(2, '0');
+}
+
+function TimerSegment({ value, label, last }: { value: string; label: string; last?: boolean }) {
+  return (
+    <View style={[styles.segment, !last && styles.segmentDivider]}>
+      <Text style={styles.segmentValue}>{value}</Text>
+      <Text style={styles.segmentLabel}>{label}</Text>
+    </View>
+  );
 }
 
 export default function Home() {
@@ -96,18 +105,18 @@ export default function Home() {
           </Text>
         </View>
 
-        {diffMs === null ? (
-          <Text style={styles.countdownDays}>—</Text>
-        ) : (
-          <>
-            <Text style={styles.countdownDays}>
-              {days === 0 ? 'Уже сегодня' : `Через ${days} ${pluralDays(days!)}`}
-            </Text>
-            <Text style={styles.countdownClock}>
-              {pad(hours!)}:{pad(minutes!)}:{pad(seconds!)}
-            </Text>
-          </>
-        )}
+        <View style={styles.countdownRow}>
+          {diffMs === null ? (
+            <Text style={styles.countdownEmpty}>—</Text>
+          ) : (
+            <>
+              <TimerSegment value={String(days)} label={days === 1 ? 'день' : 'дней'} />
+              <TimerSegment value={pad(hours!)} label="часов" />
+              <TimerSegment value={pad(minutes!)} label="минут" />
+              <TimerSegment value={pad(seconds!)} label="секунд" last />
+            </>
+          )}
+        </View>
       </Card>
 
       <Pressable
@@ -189,14 +198,17 @@ const styles = StyleSheet.create({
   },
   invitePlaceholderText: { ...type.h2, color: colors.inkMuted },
   countdownCard: { marginBottom: spacing.xl },
-  countdownHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+  countdownHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg },
   countdownLabel: { ...type.bodySm, color: colors.sageDark, marginLeft: 6 },
-  countdownDays: {
-    fontFamily: fonts.bodyBold, fontSize: 22, color: colors.roseDark,
+  countdownRow: { flexDirection: 'row' },
+  countdownEmpty: { ...type.h2, color: colors.ink, flex: 1, textAlign: 'center' },
+  segment: { flex: 1, alignItems: 'center' },
+  segmentDivider: { borderRightWidth: 1, borderRightColor: colors.sage + '33' },
+  segmentValue: {
+    fontFamily: fonts.bodyBold, fontSize: 26, color: colors.roseDark, fontVariant: ['tabular-nums'],
   },
-  countdownClock: {
-    fontFamily: fonts.body, fontSize: 15, color: colors.sageDark,
-    fontVariant: ['tabular-nums'], marginTop: 2, letterSpacing: 0.5,
+  segmentLabel: {
+    ...type.bodySm, fontSize: 11, color: colors.sageDark, marginTop: 4,
   },
   reportCard: {
     flexDirection: 'row', alignItems: 'center',
