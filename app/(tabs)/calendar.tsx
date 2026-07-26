@@ -16,6 +16,7 @@ import { Screen } from '../../src/components/Screen';
 import { Card } from '../../src/components/Card';
 import { Button } from '../../src/components/Button';
 import { EntryCard } from '../../src/components/EntryCard';
+import { Mascot } from '../../src/components/Mascot';
 import { useAppStore } from '../../src/store/useAppStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { getPartnerActivity, listAllEntries } from '../../src/services/entries';
@@ -197,7 +198,11 @@ export default function CalendarScreen() {
         <Text style={styles.emptyText}>⚠️ {loadError}</Text>
       ) : selectedEntries.length === 0 ? (
         <Card style={{ alignItems: 'center' }}>
-          <Text style={{ fontSize: 28, marginBottom: spacing.sm }}>{partnerActivityHiddenOnSelected ? '🔒' : '🌤️'}</Text>
+          {partnerActivityHiddenOnSelected ? (
+            <Text style={{ fontSize: 28, marginBottom: spacing.sm }}>🔒</Text>
+          ) : (
+            <Mascot pose="sleepy" size={80} style={{ marginBottom: spacing.sm }} />
+          )}
           <Text style={styles.emptyText}>
             {partnerActivityHiddenOnSelected
               ? `Партнёр кое-что добавил(а) — откроется${revealHint ? ` ${revealHint}` : ''}`

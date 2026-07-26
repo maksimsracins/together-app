@@ -7,6 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { Screen } from '../src/components/Screen';
 import { BackHeader } from '../src/components/BackHeader';
 import { Card } from '../src/components/Card';
+import { Mascot } from '../src/components/Mascot';
 import { useNotificationsStore } from '../src/store/useNotificationsStore';
 import { colors, radius, spacing, type } from '../src/theme';
 
@@ -33,7 +34,7 @@ export default function NotificationsScreen() {
 
       {items.length === 0 ? (
         <Card style={{ alignItems: 'center', marginTop: spacing.xl }}>
-          <Text style={styles.emptyEmoji}>🔔</Text>
+          <Mascot pose="listening" size={80} style={{ marginBottom: spacing.sm }} />
           <Text style={styles.emptyText}>Пока нет уведомлений</Text>
         </Card>
       ) : (
@@ -71,6 +72,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: spacing.sm,
   },
-  emptyEmoji: { fontSize: 32, marginBottom: spacing.sm },
   emptyText: { ...type.body, color: colors.inkMuted },
 });

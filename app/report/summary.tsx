@@ -18,6 +18,7 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../../src/components/Avatar';
+import { Mascot } from '../../src/components/Mascot';
 import { useAppStore } from '../../src/store/useAppStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { getReportHistoryDetail } from '../../src/services/report';
@@ -381,7 +382,7 @@ export default function ReportSummary() {
           <ActivityIndicator style={{ marginTop: spacing.xxl }} color={colors.roseDark} />
         ) : !r ? (
           <View style={styles.emptyWrap}>
-            <Text style={styles.emptyEmoji}>📖</Text>
+            <Mascot pose="reading" size={96} style={{ marginBottom: spacing.md }} />
             <Text style={styles.emptyTitle}>Отчёта пока нет</Text>
             <Text style={styles.emptyHint}>
               AI соберёт историю недели автоматически, в день и час, указанные в настройках отчёта
@@ -720,7 +721,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 6,
   },
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: spacing.xxxl },
-  emptyEmoji: { fontSize: 40, marginBottom: spacing.md },
   emptyTitle: { ...type.h3, color: colors.ink, marginBottom: spacing.xs },
   emptyHint: { ...type.body, color: colors.inkMuted, textAlign: 'center', maxWidth: 280 },
   pickerOverlay: { flex: 1, justifyContent: 'flex-end' },

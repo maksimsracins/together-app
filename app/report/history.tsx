@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/components/Screen';
 import { BackHeader } from '../../src/components/BackHeader';
 import { Card } from '../../src/components/Card';
+import { Mascot } from '../../src/components/Mascot';
 import { getReportHistory, ReportHistoryItem } from '../../src/services/report';
 import { colors, spacing, type } from '../../src/theme';
 
@@ -30,7 +31,7 @@ export default function ReportHistory() {
         <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.roseDark} />
       ) : items.length === 0 ? (
         <Card style={{ alignItems: 'center' }}>
-          <Text style={{ fontSize: 28, marginBottom: spacing.sm }}>📖</Text>
+          <Mascot pose="reading" size={80} style={{ marginBottom: spacing.sm }} />
           <Text style={styles.emptyText}>Пока нет ни одного отчёта</Text>
         </Card>
       ) : (
