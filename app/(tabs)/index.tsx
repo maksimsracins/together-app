@@ -257,19 +257,27 @@ export default function Home() {
       </Card>
 
       <Pressable
-        style={({ pressed }) => [styles.reportCard, pressed && styles.reportCardPressed]}
+        style={({ pressed }) => [
+          styles.reportCard,
+          weeklyReport && styles.reportCardReady,
+          pressed && styles.reportCardPressed,
+        ]}
         onPress={() => router.push('/report/summary')}
       >
-        <View style={styles.reportIconWrap}>
-          <Ionicons name={weeklyReport ? 'book-outline' : 'sparkles-outline'} size={20} color={colors.roseDark} />
+        <View style={[styles.reportIconWrap, weeklyReport && styles.reportIconWrapReady]}>
+          <Ionicons
+            name={weeklyReport ? 'book' : 'sparkles-outline'}
+            size={20}
+            color={weeklyReport ? colors.white : colors.roseDark}
+          />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.reportTitle}>Ваша история недели</Text>
-          <Text style={styles.reportHint}>
-            {weeklyReport ? 'Готово — можно прочитать' : 'Появится по расписанию отчёта'}
+          <Text style={[styles.reportHint, weeklyReport && styles.reportHintReady]}>
+            {weeklyReport ? 'Готово — можно прочитать 💌' : 'Появится по расписанию отчёта'}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.inkMuted} />
+        <Ionicons name="chevron-forward" size={18} color={weeklyReport ? colors.roseDark : colors.inkMuted} />
       </Pressable>
 
       <View style={{ flex: 1 }} />
@@ -455,13 +463,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card, borderRadius: radius.lg,
     padding: spacing.lg, ...shadow.soft,
   },
+  reportCardReady: { backgroundColor: colors.roseMist },
   reportCardPressed: { opacity: 0.85 },
   reportIconWrap: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.roseMist,
     alignItems: 'center', justifyContent: 'center', marginRight: spacing.md,
   },
+  reportIconWrapReady: { backgroundColor: colors.rose },
   reportTitle: { ...type.bodySemibold, fontFamily: type.bodySemibold.fontFamily, color: colors.ink },
   reportHint: { ...type.bodySm, color: colors.inkMuted, marginTop: 2 },
+  reportHintReady: { fontFamily: type.bodySemibold.fontFamily, color: colors.roseDark },
   cta: { alignItems: 'center', marginBottom: spacing.xxl },
   ctaCircle: {
     width: 64, height: 64, borderRadius: 32, backgroundColor: colors.rose,
