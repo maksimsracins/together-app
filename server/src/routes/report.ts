@@ -213,6 +213,9 @@ export async function runReportGeneration(ctx: CoupleCtx) {
     report: {
       narrative: result.narrative,
       insight: result.insight,
+      appreciationHighlight: result.appreciationHighlight,
+      loveMapNote: result.loveMapNote,
+      reflectionQuestion: result.reflectionQuestion,
       myEntries: toDisplayEntries(myEntries),
       partnerEntries: toDisplayEntries(partnerEntries),
       weather: { mine: weatherMe, partner: weatherPartner },
@@ -278,6 +281,9 @@ reportRouter.get('/latest', async (req: AuthedRequest, res) => {
     report: {
       narrative: parsed.narrative,
       insight: parsed.insight ?? '',
+      appreciationHighlight: parsed.appreciationHighlight ?? '',
+      loveMapNote: parsed.loveMapNote ?? '',
+      reflectionQuestion: parsed.reflectionQuestion ?? '',
       myEntries: toDisplayEntries(myEntries),
       partnerEntries: toDisplayEntries(partnerEntries),
       weather: resolveWeather(parsed, me.id, partner?.id),
@@ -322,6 +328,9 @@ reportRouter.get('/history/:id', async (req: AuthedRequest, res) => {
     report: {
       narrative: parsed.narrative,
       insight: parsed.insight ?? '',
+      appreciationHighlight: parsed.appreciationHighlight ?? '',
+      loveMapNote: parsed.loveMapNote ?? '',
+      reflectionQuestion: parsed.reflectionQuestion ?? '',
       myEntries: toDisplayEntries(myEntries),
       partnerEntries: toDisplayEntries(partnerEntries),
       weather: resolveWeather(parsed, me.id, partner?.id),

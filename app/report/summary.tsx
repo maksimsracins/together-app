@@ -297,6 +297,9 @@ export default function ReportSummary() {
           partnerEntries: envelope.report.partnerEntries,
           narrative: envelope.report.narrative,
           insight: envelope.report.insight,
+          appreciationHighlight: envelope.report.appreciationHighlight,
+          loveMapNote: envelope.report.loveMapNote,
+          reflectionQuestion: envelope.report.reflectionQuestion,
           weather: envelope.report.weather,
         });
       })
@@ -428,6 +431,26 @@ export default function ReportSummary() {
                 </View>
               )}
 
+              {!!r.appreciationHighlight && (
+                <View style={styles.appreciationBox}>
+                  <View style={styles.insightHeaderRow}>
+                    <Ionicons name="heart" size={13} color={colors.roseDark} />
+                    <Text style={[styles.insightLabel, { color: colors.roseDark }]}>Момент благодарности</Text>
+                  </View>
+                  <Text style={styles.appreciationText}>{r.appreciationHighlight}</Text>
+                </View>
+              )}
+
+              {!!r.loveMapNote && (
+                <View style={styles.loveMapBox}>
+                  <View style={styles.insightHeaderRow}>
+                    <Ionicons name="bulb-outline" size={14} color={colors.skyDark} />
+                    <Text style={[styles.insightLabel, { color: colors.skyDark }]}>Может быть, вы не знали</Text>
+                  </View>
+                  <Text style={styles.loveMapText}>{r.loveMapNote}</Text>
+                </View>
+              )}
+
               {emotionSlices.length > 0 && (
                 <View style={styles.paletteSection}>
                   <Text style={styles.sectionLabel}>Эмоциональная палитра недели</Text>
@@ -487,6 +510,13 @@ export default function ReportSummary() {
                   />
                 )}
               </Animated.View>
+            )}
+
+            {!!r.reflectionQuestion && (
+              <View style={styles.reflectionBox}>
+                <Ionicons name="chatbubbles-outline" size={18} color={colors.roseDark} style={{ marginBottom: spacing.sm }} />
+                <Text style={styles.reflectionText}>{r.reflectionQuestion}</Text>
+              </View>
             )}
 
             {!id && (
@@ -585,6 +615,24 @@ const styles = StyleSheet.create({
     ...type.label, color: colors.inkSoft, textTransform: 'uppercase', marginLeft: 6,
   },
   insightText: { ...type.body, color: colors.inkSoft, lineHeight: 21 },
+  appreciationBox: {
+    marginTop: spacing.lg, backgroundColor: colors.roseMist,
+    borderRadius: radius.lg, padding: spacing.lg,
+  },
+  appreciationText: { ...type.body, color: colors.ink, lineHeight: 21 },
+  loveMapBox: {
+    marginTop: spacing.lg, backgroundColor: colors.skyMist,
+    borderRadius: radius.lg, padding: spacing.lg,
+  },
+  loveMapText: { ...type.body, color: colors.ink, lineHeight: 21 },
+  reflectionBox: {
+    marginTop: spacing.xl, alignItems: 'center',
+    borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.xl,
+  },
+  reflectionText: {
+    ...type.bodyLg, fontFamily: type.bodySemibold.fontFamily, color: colors.ink,
+    textAlign: 'center', lineHeight: 25,
+  },
   sectionLabel: {
     ...type.label, color: colors.inkMuted, textTransform: 'uppercase', marginBottom: spacing.md,
   },

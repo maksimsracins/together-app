@@ -4,6 +4,9 @@ import { EmotionKey, WeatherSummary, WeeklyReportEntry } from '../types';
 export interface PerspectiveReport {
   narrative: string;
   insight: string;
+  appreciationHighlight: string;
+  loveMapNote: string;
+  reflectionQuestion: string;
   myEntries: WeeklyReportEntry[];
   partnerEntries: WeeklyReportEntry[];
   weather: { mine: WeatherSummary | null; partner: WeatherSummary | null };

@@ -82,5 +82,8 @@ export interface WeeklyReport {
   partnerEntries: WeeklyReportEntry[];
   narrative: string;
   insight: string;
+  appreciationHighlight: string;
+  loveMapNote: string;
+  reflectionQuestion: string;
   weather: { mine: WeatherSummary | null; partner: WeatherSummary | null };
 }

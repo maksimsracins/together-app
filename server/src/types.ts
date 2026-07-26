@@ -41,4 +41,7 @@ export interface GenerateReportRequest {
 export interface GenerateReportResponse {
   narrative: string;
   insight: string;
+  appreciationHighlight: string;
+  loveMapNote: string;
+  reflectionQuestion: string;
 }
