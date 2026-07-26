@@ -26,6 +26,7 @@ import { registerPushToken } from '../../src/services/users';
 import { ApiError } from '../../src/services/http';
 import { Entry } from '../../src/types';
 import { colors, radius, spacing, type } from '../../src/theme';
+import { daysUntilNextReport, pluralDays } from '../../src/utils/week';
 
 type Author = 'mine' | 'partner';
 interface Selection {
@@ -231,6 +232,11 @@ export default function CalendarScreen() {
   // empty list for a day with a dot means "hidden," not "nothing happened."
   const partnerActivityHiddenOnSelected =
     selected.author === 'partner' && selectedEntries.length === 0 && hasPartnerActivity(selected.date);
+
+  const daysUntilReveal =
+    reportWeekday !== null && reportHour !== null ? daysUntilNextReport(reportWeekday, reportHour) : null;
+  const revealHint =
+    daysUntilReveal === null ? '' : daysUntilReveal === 0 ? 'сегодня' : `через ${daysUntilReveal} ${pluralDays(daysUntilReveal)}`;
 
   const weekLabel = `${format(weekCursor, 'd MMM', { locale: ru })} – ${format(endOfWeek(weekCursor, { weekStartsOn: 1 }), 'd MMM', { locale: ru })}`;
 
@@ -447,7 +453,7 @@ export default function CalendarScreen() {
           <Text style={{ fontSize: 28, marginBottom: spacing.sm }}>{partnerActivityHiddenOnSelected ? '🔒' : '🌤️'}</Text>
           <Text style={styles.emptyText}>
             {partnerActivityHiddenOnSelected
-              ? 'Партнёр кое-что добавил(а) — увидите после отчёта'
+              ? `Партнёр кое-что добавил(а) — откроется${revealHint ? ` ${revealHint}` : ''}`
               : 'Записей за этот день нет'}
           </Text>
           {selected.author === 'mine' && isTodayFn(selected.date) && (

@@ -3,6 +3,18 @@ export function daysUntilWeekday(targetWeekday: number, from: Date = new Date())
   return diff;
 }
 
+// Approximates days remaining until the couple's next scheduled report using
+// the viewer's device clock -- the actual generation happens in the couple's
+// stored timezone, so this is a friendly estimate, not a precise countdown.
+export function daysUntilNextReport(weekday: number, hour: number): number {
+  const now = new Date();
+  const currentIso = now.getDay() === 0 ? 7 : now.getDay();
+  let diff = weekday - currentIso;
+  if (diff < 0) diff += 7;
+  if (diff === 0 && now.getHours() >= hour) diff = 7;
+  return diff;
+}
+
 export function pluralDays(n: number) {
   const mod10 = n % 10;
   const mod100 = n % 100;

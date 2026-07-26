@@ -10,19 +10,9 @@ import { useAuthStore } from '../../src/store/useAuthStore';
 import { useNotificationsStore } from '../../src/store/useNotificationsStore';
 import { getCoupleSettings } from '../../src/services/couples';
 import { colors, radius, shadow, spacing, type } from '../../src/theme';
-import { greeting, pluralDays } from '../../src/utils/week';
+import { daysUntilNextReport, greeting, pluralDays } from '../../src/utils/week';
 
-// Approximates days remaining until the couple's next scheduled report using
-// the viewer's device clock — the actual generation happens in the couple's
-// stored timezone, so this is a friendly estimate, not a precise countdown.
-function daysUntilNextReport(weekday: number, hour: number): number {
-  const now = new Date();
-  const currentIso = now.getDay() === 0 ? 7 : now.getDay();
-  let diff = weekday - currentIso;
-  if (diff < 0) diff += 7;
-  if (diff === 0 && now.getHours() >= hour) diff = 7;
-  return diff;
-}
+const WEEKDAY_DOTS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 export default function Home() {
   const user = useAuthStore((s) => s.user)!;
@@ -33,12 +23,18 @@ export default function Home() {
   const isGenerating = reportStatus === 'loading';
   const g = greeting();
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
+  const [reportWeekday, setReportWeekday] = useState<number | null>(null);
 
   useEffect(() => {
     getCoupleSettings()
-      .then((s) => setDaysLeft(daysUntilNextReport(s.reportWeekday, s.reportHour)))
+      .then((s) => {
+        setDaysLeft(daysUntilNextReport(s.reportWeekday, s.reportHour));
+        setReportWeekday(s.reportWeekday);
+      })
       .catch(() => {});
   }, []);
+
+  const todayIso = new Date().getDay() === 0 ? 7 : new Date().getDay();
 
   return (
     <View style={styles.root}>
@@ -85,13 +81,41 @@ export default function Home() {
       </View>
 
       <Card tone="sage" style={styles.countdownCard}>
-        <View>
-          <Text style={styles.countdownLabel}>До следующего отчёта</Text>
-          <Text style={styles.countdownValue}>
-            {daysLeft === null ? '—' : daysLeft === 0 ? 'Сегодня' : `${daysLeft} ${pluralDays(daysLeft)}`}
-          </Text>
+        <View style={styles.countdownTop}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.countdownLabel}>
+              {partner ? `Скоро откроются события ${partner.name}` : 'До следующего отчёта'}
+            </Text>
+            <Text style={styles.countdownValue}>
+              {daysLeft === null ? '—' : daysLeft === 0 ? 'Сегодня' : `${daysLeft} ${pluralDays(daysLeft)}`}
+            </Text>
+          </View>
+          <Text style={styles.countdownEmoji}>💌</Text>
         </View>
-        <Text style={styles.countdownEmoji}>📖</Text>
+
+        {reportWeekday !== null && (
+          <View style={styles.weekDots}>
+            {WEEKDAY_DOTS.map((label, i) => {
+              const iso = i + 1;
+              const isReveal = iso === reportWeekday;
+              const isToday = iso === todayIso;
+              return (
+                <View key={label} style={styles.weekDotItem}>
+                  <View
+                    style={[
+                      styles.weekDot,
+                      isReveal && styles.weekDotReveal,
+                      isToday && !isReveal && styles.weekDotToday,
+                    ]}
+                  >
+                    {isReveal && <Ionicons name="heart" size={9} color={colors.white} />}
+                  </View>
+                  <Text style={[styles.weekDotLabel, isToday && styles.weekDotLabelToday]}>{label}</Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
       </Card>
 
       <Pressable
@@ -172,10 +196,24 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   invitePlaceholderText: { ...type.h2, color: colors.inkMuted },
-  countdownCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xl },
+  countdownCard: { marginBottom: spacing.xl },
+  countdownTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   countdownLabel: { ...type.bodySm, color: colors.sageDark },
   countdownValue: { ...type.h2, color: colors.ink, marginTop: 4 },
-  countdownEmoji: { fontSize: 34 },
+  countdownEmoji: { fontSize: 30 },
+  weekDots: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    marginTop: spacing.lg, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.sage + '33',
+  },
+  weekDotItem: { alignItems: 'center' },
+  weekDot: {
+    width: 20, height: 20, borderRadius: 10, backgroundColor: colors.card,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+  },
+  weekDotToday: { borderWidth: 2, borderColor: colors.sageDark },
+  weekDotReveal: { backgroundColor: colors.rose },
+  weekDotLabel: { fontSize: 10, color: colors.sageDark, opacity: 0.7 },
+  weekDotLabelToday: { fontFamily: type.bodySemibold.fontFamily, opacity: 1 },
   reportCard: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: colors.card, borderRadius: radius.lg,

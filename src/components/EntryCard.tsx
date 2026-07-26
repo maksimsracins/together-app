@@ -20,7 +20,6 @@ export function EntryCard({
   const typeMeta = entryTypeMeta(entry.type);
   const emo = emotionMeta(entry.emotion);
   const time = new Date(entry.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-  const locked = !!entry.includedInReportId;
   const accent = mine === undefined ? undefined : mine ? colors.rose : colors.skyDark;
 
   return (
@@ -50,11 +49,6 @@ export function EntryCard({
           <Text style={styles.emotionBadge}>
             {emo.emoji} {emo.label}
           </Text>
-          {locked && (
-            <Text style={styles.lockedBadge}>
-              🔒 В отчёте
-            </Text>
-          )}
           {entry.hasAudio && <Ionicons name="mic-outline" size={15} color={colors.inkMuted} style={styles.metaIcon} />}
           {entry.tags.map((tag) => (
             <Text key={tag} style={styles.tag}>
@@ -94,7 +88,6 @@ const styles = StyleSheet.create({
   photo: { width: '100%', height: 140, borderRadius: radius.md, marginTop: spacing.sm, backgroundColor: colors.sandMist },
   footerRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm, flexWrap: 'wrap' },
   emotionBadge: { ...type.bodySm, color: colors.roseDark, marginRight: spacing.sm },
-  lockedBadge: { ...type.bodySm, color: colors.inkMuted, marginRight: spacing.sm },
   metaIcon: { marginRight: spacing.sm },
   tag: { ...type.bodySm, color: colors.sageDark, marginRight: spacing.sm },
 });
