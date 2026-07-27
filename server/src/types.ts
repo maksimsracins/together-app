@@ -43,5 +43,4 @@ export interface GenerateReportResponse {
   insight: string;
   appreciationHighlight: string;
   loveMapNote: string;
-  reflectionQuestion: string;
 }

@@ -299,7 +299,6 @@ export default function ReportSummary() {
           insight: envelope.report.insight,
           appreciationHighlight: envelope.report.appreciationHighlight,
           loveMapNote: envelope.report.loveMapNote,
-          reflectionQuestion: envelope.report.reflectionQuestion,
           weather: envelope.report.weather,
         });
       })
@@ -552,13 +551,6 @@ export default function ReportSummary() {
                   )}
                 </View>
               )}
-
-              {!!r.reflectionQuestion && (
-                <View style={styles.reflectionBox}>
-                  <Ionicons name="chatbubbles-outline" size={18} color={colors.roseDark} style={{ marginBottom: spacing.sm }} />
-                  <Text style={styles.reflectionText}>{r.reflectionQuestion}</Text>
-                </View>
-              )}
             </Animated.View>
             )}
 
@@ -674,14 +666,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg, padding: spacing.lg,
   },
   loveMapText: { ...type.body, color: colors.ink, lineHeight: 21 },
-  reflectionBox: {
-    marginTop: spacing.xl, alignItems: 'center',
-    borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.xl,
-  },
-  reflectionText: {
-    ...type.bodyLg, fontFamily: type.bodySemibold.fontFamily, color: colors.ink,
-    textAlign: 'center', lineHeight: 25,
-  },
   sectionLabel: {
     ...type.label, color: colors.inkMuted, textTransform: 'uppercase', marginBottom: spacing.md,
   },

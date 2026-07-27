@@ -56,7 +56,6 @@ function buildWeeklyReport(envelope: reportService.ReportEnvelope): WeeklyReport
     insight: r.insight,
     appreciationHighlight: r.appreciationHighlight,
     loveMapNote: r.loveMapNote,
-    reflectionQuestion: r.reflectionQuestion,
     weather: r.weather,
   };
 }
