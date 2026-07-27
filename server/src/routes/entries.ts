@@ -88,13 +88,13 @@ entriesRouter.get('/partner', async (req: AuthedRequest, res) => {
 entriesRouter.get('/partner/activity', async (req: AuthedRequest, res) => {
   const user = await db.user.findUnique({ where: { id: req.userId } });
   if (!user?.coupleId) {
-    res.json({ dates: [] });
+    res.json({ createdAts: [] });
     return;
   }
 
   const partner = await db.user.findFirst({ where: { coupleId: user.coupleId, id: { not: user.id } } });
   if (!partner) {
-    res.json({ dates: [] });
+    res.json({ createdAts: [] });
     return;
   }
 

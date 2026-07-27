@@ -396,4 +396,18 @@ describe('partner entry visibility', () => {
     expect(res.body.createdAts).toHaveLength(1);
     expect(res.body).not.toHaveProperty('text');
   });
+
+  // Regression: this branch used to respond {dates: []} while the populated
+  // branch responds {createdAts: [...]} -- the client only ever reads
+  // `createdAts`, so an unpaired user's calendar screen threw on
+  // `.createdAts.map(...)` being undefined and surfaced a false "failed to
+  // load" error despite the rest of the screen loading fine.
+  it('responds with an empty createdAts array (not `dates`) for a user with no partner', async () => {
+    const alice = await signupAndLogin('Alice', 'partner-activity-solo');
+    const res = await request(app)
+      .get('/api/entries/partner/activity')
+      .set('Authorization', `Bearer ${alice.token}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ createdAts: [] });
+  });
 });
