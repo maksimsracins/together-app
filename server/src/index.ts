@@ -1,4 +1,8 @@
 import 'dotenv/config';
+import { initSentry } from './sentry';
+
+initSentry();
+
 import { app } from './app';
 import { startReportScheduler } from './scheduler';
 

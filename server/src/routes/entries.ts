@@ -4,6 +4,7 @@ import { AuthedRequest, requireAuth } from '../auth';
 import { serializeEntry, serializeEntryListItem } from '../serializers';
 import { weekIdFor } from '../week';
 import { sendPushNotification } from '../push';
+import { logError } from '../sentry';
 
 export const entriesRouter = Router();
 
@@ -153,7 +154,7 @@ entriesRouter.post('/', async (req: AuthedRequest, res) => {
   // Fire-and-forget: never let a notification failure affect the entry response.
   if (user?.coupleId) {
     notifyPartnerOfNewEntry(user.coupleId, user.id, user.name).catch((err) =>
-      console.error('Failed to notify partner of new entry', err)
+      logError('Failed to notify partner of new entry', err)
     );
   }
 });

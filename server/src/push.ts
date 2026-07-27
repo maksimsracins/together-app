@@ -1,3 +1,5 @@
+import { logError } from './sentry';
+
 export async function sendPushNotification(token: string, title: string, body: string, data?: Record<string, unknown>) {
   try {
     const res = await fetch('https://exp.host/--/api/v2/push/send', {
@@ -8,11 +10,11 @@ export async function sendPushNotification(token: string, title: string, body: s
     const json = (await res.json()) as { data?: { status: string; message?: string; details?: unknown } };
     const ticket = json?.data;
     if (ticket?.status === 'error') {
-      console.error('Expo push ticket error', ticket.message, ticket.details);
+      logError('Expo push ticket error', new Error(`${ticket.message} ${JSON.stringify(ticket.details)}`));
     } else {
       console.log(`Push sent to ${token.slice(0, 24)}... "${title}: ${body}" -> ticket ${ticket?.status}`);
     }
   } catch (err) {
-    console.error('Failed to send push notification', err);
+    logError('Failed to send push notification', err);
   }
 }

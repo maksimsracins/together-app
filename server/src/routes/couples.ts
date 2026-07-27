@@ -3,6 +3,7 @@ import { randomInt } from 'crypto';
 import { db } from '../db';
 import { AuthedRequest, requireAuth } from '../auth';
 import { joinLimiter } from '../rateLimiters';
+import { logError } from '../sentry';
 
 export const couplesRouter = Router();
 
@@ -137,7 +138,7 @@ couplesRouter.post('/join', joinLimiter, async (req: AuthedRequest, res) => {
           message: `${user.name} присоединил(-ась) к вам в Together 💞`,
         })),
       })
-      .catch((err) => console.error('Failed to notify of partner joining', err));
+      .catch((err) => logError('Failed to notify of partner joining', err));
   }
 });
 
@@ -303,7 +304,7 @@ couplesRouter.patch('/settings', async (req: AuthedRequest, res) => {
             message: `${me.name} изменил(а) настройки отчёта: ${changes.join(', ')}.`,
           },
         })
-        .catch((err) => console.error('Failed to notify of settings change', err));
+        .catch((err) => logError('Failed to notify of settings change', err));
     }
   }
 });

@@ -3,6 +3,7 @@ import { toZonedTime } from 'date-fns-tz';
 import { db } from './db';
 import { notifyCoupleReportReady, runReportGeneration } from './routes/report';
 import { sendPushNotification } from './push';
+import { logError } from './sentry';
 
 const CHECK_INTERVAL_MS = Number(process.env.REPORT_SCHEDULER_INTERVAL_MS) || 30 * 60 * 1000;
 
@@ -44,7 +45,7 @@ async function checkDueReports() {
 
       await notifyCoupleReportReady(couple, memberA, memberB ?? null);
     } catch (err) {
-      console.error(`Report scheduler failed for couple ${couple.id}`, err);
+      logError(`Report scheduler failed for couple ${couple.id}`, err);
     }
   }
 }
@@ -82,7 +83,7 @@ async function checkJournalReminders() {
         );
         await db.user.update({ where: { id: member.id }, data: { lastJournalReminderSentAt: now } });
       } catch (err) {
-        console.error(`Journal reminder failed for user ${member.id}`, err);
+        logError(`Journal reminder failed for user ${member.id}`, err);
       }
     }
   }
@@ -94,8 +95,8 @@ export function startReportScheduler() {
     return;
   }
   const tick = () => {
-    checkDueReports().catch((err) => console.error('Report scheduler tick failed', err));
-    checkJournalReminders().catch((err) => console.error('Journal reminder tick failed', err));
+    checkDueReports().catch((err) => logError('Report scheduler tick failed', err));
+    checkJournalReminders().catch((err) => logError('Journal reminder tick failed', err));
   };
   tick();
   setInterval(tick, CHECK_INTERVAL_MS);

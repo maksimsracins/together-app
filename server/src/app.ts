@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import { Sentry } from './sentry';
 import { authRouter } from './routes/auth';
 import { usersRouter } from './routes/users';
 import { couplesRouter } from './routes/couples';
@@ -50,6 +51,7 @@ app.use((req, res) => {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled error', err);
+  Sentry.captureException(err);
   if (res.headersSent) return;
   res.status(500).json({ error: 'Internal server error' });
 });

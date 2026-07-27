@@ -9,6 +9,7 @@ import { ensureCoupleContext, loadCoupleContext } from './couples';
 import { EntryInput, ProfileContext } from '../types';
 import { getWeatherSummary, WeatherSummary } from '../weather';
 import { Couple, User } from '@prisma/client';
+import { logError } from '../sentry';
 
 export const reportRouter = Router();
 
@@ -245,10 +246,10 @@ reportRouter.post('/generate', async (req: AuthedRequest, res) => {
     res.json({ id: result.id, weekId: result.generatedAt, weekLabel: result.weekLabel, generatedAt: result.generatedAt, report: result.report });
 
     notifyCoupleReportReady(ctx.couple, ctx.me, ctx.partner).catch((err) =>
-      console.error('Failed to notify couple of new report', err)
+      logError('Failed to notify couple of new report', err)
     );
   } catch (err) {
-    console.error('Failed to generate weekly report', err);
+    logError('Failed to generate weekly report', err);
     res.status(502).json({ error: 'Не удалось сгенерировать отчёт' });
   }
 });
