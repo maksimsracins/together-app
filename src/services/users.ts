@@ -31,3 +31,7 @@ export function updateMe(patch: ProfilePatch) {
 export function registerPushToken(pushToken: string | null) {
   return api<void>('/api/me/notifications', { method: 'PATCH', body: { pushToken } });
 }
+
+export function deleteMe() {
+  return api<void>('/api/me', { method: 'DELETE' });
+}

@@ -21,6 +21,7 @@ export default function EditProfile() {
   const partner = useAuthStore((s) => s.partner);
   const updateProfile = useAuthStore((s) => s.updateProfile);
   const leaveCouple = useAuthStore((s) => s.leaveCouple);
+  const deleteAccount = useAuthStore((s) => s.deleteAccount);
 
   const [avatarEmoji, setAvatarEmoji] = useState(user.avatarEmoji);
   const [avatarUri, setAvatarUri] = useState<string | null>(user.avatarUri ?? null);
@@ -133,6 +134,30 @@ export default function EditProfile() {
               router.back();
             } catch {
               Alert.alert('Ошибка', 'Не удалось убрать пару. Попробуйте ещё раз.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Удалить аккаунт?',
+      partner
+        ? `Все ваши записи будут удалены без возможности восстановления, а ваша пара с ${partner.name} расторгнута.`
+        : 'Все ваши записи будут удалены без возможности восстановления. Это действие необратимо.',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Удалить навсегда',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAccount();
+              router.replace('/(auth)/welcome');
+            } catch {
+              Alert.alert('Ошибка', 'Не удалось удалить аккаунт. Попробуйте ещё раз.');
             }
           },
         },
@@ -326,6 +351,9 @@ export default function EditProfile() {
             <Button label="Убрать пару" variant="outline" onPress={handleLeaveCouple} />
           </>
         )}
+
+        <Text style={[styles.label, { marginTop: spacing.lg }]}>Аккаунт</Text>
+        <Button label="Удалить аккаунт" variant="outline" onPress={handleDeleteAccount} />
       </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

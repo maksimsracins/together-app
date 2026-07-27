@@ -98,3 +98,38 @@ usersRouter.get('/me/partner', async (req: AuthedRequest, res) => {
   });
   res.json(partner ? serializeUser(partner) : null);
 });
+
+usersRouter.delete('/me', async (req: AuthedRequest, res) => {
+  const user = await db.user.findUnique({ where: { id: req.userId } });
+  if (!user) {
+    res.status(404).json({ error: 'Пользователь не найден' });
+    return;
+  }
+
+  // The partner didn't initiate this and has no other way to find out --
+  // same courtesy as leaving a couple, since deleting the account dissolves
+  // the pairing for them too.
+  const partner = user.coupleId
+    ? await db.user.findFirst({ where: { coupleId: user.coupleId, id: { not: user.id } } })
+    : null;
+
+  await db.$transaction([
+    ...(partner
+      ? [
+          db.user.update({ where: { id: partner.id }, data: { coupleId: null } }),
+          db.notification.create({
+            data: {
+              userId: partner.id,
+              type: 'partner_left',
+              message: `${user.name} удалил(а) свой аккаунт в Together. Ваша пара расторгнута.`,
+            },
+          }),
+        ]
+      : []),
+    db.notification.deleteMany({ where: { userId: user.id } }),
+    db.entry.deleteMany({ where: { userId: user.id } }),
+    db.user.delete({ where: { id: user.id } }),
+  ]);
+
+  res.status(204).send();
+});

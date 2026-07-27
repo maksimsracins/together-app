@@ -23,6 +23,7 @@ interface AuthState {
   refreshMe: () => Promise<void>;
   updateProfile: (patch: usersService.ProfilePatch) => Promise<void>;
   leaveCouple: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -98,5 +99,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await couplesService.leaveCouple();
     const user = await usersService.getMe();
     set({ user, partner: null });
+  },
+
+  deleteAccount: async () => {
+    await usersService.deleteMe();
+    await authService.logout();
+    set({ status: 'guest', user: null, partner: null });
+    useAppStore.getState().reset();
+    useNotificationsStore.getState().reset();
   },
 }));
