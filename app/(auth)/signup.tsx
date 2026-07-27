@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Screen } from '../../src/components/Screen';
 import { BackHeader } from '../../src/components/BackHeader';
@@ -7,7 +7,7 @@ import { TextField } from '../../src/components/TextField';
 import { Button } from '../../src/components/Button';
 import { SocialRow } from '../../src/components/SocialRow';
 import { useAuthStore } from '../../src/store/useAuthStore';
-import { ApiError } from '../../src/services/http';
+import { ApiError, API_BASE_URL } from '../../src/services/http';
 import { colors, radius, spacing, type } from '../../src/theme';
 
 export default function Signup() {
@@ -80,6 +80,18 @@ export default function Signup() {
 
       <SocialRow />
 
+      <Text style={styles.legal}>
+        Создавая аккаунт, вы соглашаетесь с{' '}
+        <Text style={styles.link} onPress={() => Linking.openURL(`${API_BASE_URL}/terms`)}>
+          условиями использования
+        </Text>{' '}
+        и{' '}
+        <Text style={styles.link} onPress={() => Linking.openURL(`${API_BASE_URL}/privacy`)}>
+          политикой конфиденциальности
+        </Text>
+        .
+      </Text>
+
       <Text style={styles.footer}>
         Уже есть аккаунт?{' '}
         <Text style={styles.link} onPress={() => router.push('/(auth)/login')}>
@@ -108,6 +120,7 @@ const styles = StyleSheet.create({
   },
   avatarEmoji: { fontSize: 36 },
   error: { ...type.bodySm, color: colors.danger, marginTop: spacing.lg, textAlign: 'center' },
+  legal: { ...type.bodySm, color: colors.inkMuted, textAlign: 'center', marginTop: spacing.lg, lineHeight: 18 },
   footer: { ...type.body, color: colors.inkMuted, textAlign: 'center', marginTop: spacing.xl },
   link: { color: colors.roseDark, fontFamily: type.bodySemibold.fontFamily },
 });

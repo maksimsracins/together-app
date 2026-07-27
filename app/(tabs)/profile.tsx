@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/components/Screen';
@@ -10,6 +10,7 @@ import { Avatar } from '../../src/components/Avatar';
 import { Button } from '../../src/components/Button';
 import { LoveLanguagesInfoButton } from '../../src/components/LoveLanguagesInfo';
 import { useAuthStore } from '../../src/store/useAuthStore';
+import { API_BASE_URL } from '../../src/services/http';
 import { colors, radius, spacing, type } from '../../src/theme';
 import { differenceInDays } from 'date-fns';
 
@@ -84,6 +85,16 @@ export default function Profile() {
       </View>
 
       <Button label="Выйти" variant="outline" onPress={logout} style={{ marginTop: spacing.md }} />
+
+      <View style={styles.legalRow}>
+        <Text style={styles.legalLink} onPress={() => Linking.openURL(`${API_BASE_URL}/privacy`)}>
+          Конфиденциальность
+        </Text>
+        <Text style={styles.legalDivider}>·</Text>
+        <Text style={styles.legalLink} onPress={() => Linking.openURL(`${API_BASE_URL}/terms`)}>
+          Условия использования
+        </Text>
+      </View>
     </Screen>
   );
 }
@@ -129,4 +140,7 @@ const styles = StyleSheet.create({
   sectionTitle: { ...type.h2, color: colors.ink },
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: spacing.xl },
   emptyHint: { ...type.body, color: colors.inkMuted },
+  legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: spacing.xl, marginBottom: spacing.md },
+  legalLink: { ...type.bodySm, color: colors.inkMuted, textDecorationLine: 'underline' },
+  legalDivider: { ...type.bodySm, color: colors.inkMuted, marginHorizontal: spacing.sm },
 });
