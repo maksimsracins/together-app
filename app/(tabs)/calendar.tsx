@@ -32,6 +32,10 @@ interface Selection {
 
 const WEEKDAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
+function dateKey(d: Date) {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
 export default function CalendarScreen() {
   const partnerEntries = useAppStore((s) => s.partnerEntries);
   const partner = useAuthStore((s) => s.partner);
@@ -74,10 +78,17 @@ export default function CalendarScreen() {
     return Array.from({ length: 7 }, (_, i) => new Date(start.getTime() + i * 24 * 60 * 60 * 1000));
   }, [weekCursor]);
 
-  const hasEntry = (list: Entry[] | null, day: Date) =>
-    !!list?.some((e) => isSameDay(new Date(e.createdAt), day));
+  // A long-term user can accumulate thousands of entries; scanning the full
+  // list per day cell (14 linear scans every render, unmemoized) gets slow
+  // enough to drop frames well before that. Bucket into a Set of local date
+  // keys once per data change instead, so each cell is an O(1) lookup.
+  // Local (not UTC) getters, same as isSameDay -- slicing the ISO string's
+  // UTC date would drift a day near midnight in most timezones.
+  const myEntryDays = useMemo(() => new Set((myEntries ?? []).map((e) => dateKey(new Date(e.createdAt)))), [myEntries]);
+  const partnerActivityDays = useMemo(() => new Set(partnerActivityDates.map(dateKey)), [partnerActivityDates]);
 
-  const hasPartnerActivity = (day: Date) => partnerActivityDates.some((d) => isSameDay(d, day));
+  const hasEntry = (days: Set<string>, day: Date) => days.has(dateKey(day));
+  const hasPartnerActivity = (day: Date) => partnerActivityDays.has(dateKey(day));
 
   const selectedEntries = useMemo(() => {
     const source = selected.author === 'mine' ? myEntries : partnerEntries;
@@ -145,7 +156,7 @@ export default function CalendarScreen() {
                 onPress={() => setSelected({ date: day, author: 'mine' })}
               >
                 <View style={[styles.cell, { backgroundColor: active ? colors.rose : colors.roseMist }]}>
-                  {hasEntry(myEntries, day) && (
+                  {hasEntry(myEntryDays, day) && (
                     <View style={[styles.dot, { backgroundColor: active ? colors.white : colors.roseDark }]} />
                   )}
                 </View>

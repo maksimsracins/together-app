@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -74,6 +74,11 @@ export default function NewEntry() {
   const [pickingPhoto, setPickingPhoto] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A fast double-tap can fire the handler twice before the `saving` state
+  // update from the first tap has actually re-rendered the button as
+  // disabled -- a ref flips synchronously, so the second call sees it
+  // immediately regardless of render timing.
+  const savingRef = useRef(false);
 
   // Only fires once, right when the async fallback fetch resolves -- the
   // synchronous store-match path never needed this, its useState initializers
@@ -113,7 +118,8 @@ export default function NewEntry() {
   };
 
   const persistEntry = async (finalText: string) => {
-    if (!emotion) return;
+    if (!emotion || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setError(null);
     const payload = { type: EMOTION_TO_TYPE[emotion], emotion, text: finalText.trim(), tags: [], photoUri };
@@ -128,6 +134,7 @@ export default function NewEntry() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось сохранить запись');
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -146,7 +153,8 @@ export default function NewEntry() {
   };
 
   const handleDelete = async () => {
-    if (!id) return;
+    if (!id || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     try {
       await deleteEntry(id);
@@ -154,6 +162,7 @@ export default function NewEntry() {
       router.back();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось удалить запись');
+      savingRef.current = false;
       setSaving(false);
     }
   };
