@@ -46,4 +46,22 @@ describe('rate limiters', () => {
       expect(res.status).toBe(200);
     }
   });
+
+  it('caps /report/generate tightly, since each request costs a real OpenAI call', async () => {
+    let generateReportLimiter: express.RequestHandler;
+    await jest.isolateModulesAsync(async () => {
+      process.env.NODE_ENV = 'production';
+      ({ generateReportLimiter } = await import('../src/rateLimiters'));
+    });
+
+    const app = express();
+    app.get('/test', generateReportLimiter!, (_req, res) => res.json({ ok: true }));
+
+    for (let i = 0; i < 3; i++) {
+      const res = await request(app).get('/test');
+      expect(res.status).toBe(200);
+    }
+    const blocked = await request(app).get('/test');
+    expect(blocked.status).toBe(429);
+  });
 });

@@ -30,3 +30,16 @@ export const joinLimiter = rateLimit({
   message: { error: 'Слишком много попыток. Попробуйте позже.' },
   skip,
 });
+
+// /report/generate costs real money per call (one OpenAI request) and is
+// only ever reachable from the shipped app via a __DEV__-gated test button --
+// in production it's not on any normal path, so this only matters as a cap
+// against someone calling the route directly with a valid token.
+export const generateReportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Слишком много запросов на генерацию отчёта. Попробуйте позже.' },
+  skip,
+});

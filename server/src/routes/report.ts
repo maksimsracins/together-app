@@ -10,6 +10,7 @@ import { EntryInput, ProfileContext } from '../types';
 import { getWeatherSummary, WeatherSummary } from '../weather';
 import { Couple, User } from '@prisma/client';
 import { logError } from '../sentry';
+import { generateReportLimiter } from '../rateLimiters';
 
 export const reportRouter = Router();
 
@@ -225,7 +226,7 @@ export async function runReportGeneration(ctx: CoupleCtx) {
 
 // Manual trigger, kept for testing report generation without waiting for the
 // scheduler -- not exposed anywhere in the normal client UI flow.
-reportRouter.post('/generate', async (req: AuthedRequest, res) => {
+reportRouter.post('/generate', generateReportLimiter, async (req: AuthedRequest, res) => {
   if (!process.env.OPENAI_API_KEY) {
     res.status(500).json({ error: 'OPENAI_API_KEY is not configured on the server' });
     return;
