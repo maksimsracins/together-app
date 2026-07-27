@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { db } from '../db';
 import { signToken } from '../auth';
 import { serializeUser } from '../serializers';

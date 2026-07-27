@@ -2,6 +2,7 @@ node_modules/
 dist/
 .env
 .env.test
+.env.stress
 
 prisma/*.db
 prisma/*.db-journal
