@@ -43,7 +43,7 @@ export default function TabsLayout() {
   useEffect(() => {
     if (authStatus !== 'authed') return;
     const interval = setInterval(() => {
-      refreshMe();
+      refreshMe().catch(() => {});
       loadNotifications().catch(() => {});
       loadLatestReport().catch(() => {});
       loadCoupleSettings().catch(() => {});
@@ -58,7 +58,7 @@ export default function TabsLayout() {
     if (authStatus !== 'authed') return;
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active') {
-        refreshMe();
+        refreshMe().catch(() => {});
         loadNotifications().catch(() => {});
         loadLatestReport().catch(() => {});
         loadCoupleSettings().catch(() => {});
