@@ -331,7 +331,25 @@ export default function ReportSummary() {
   const moodPoints = buildMoodByDay(allEntries);
   const emotionSlices = buildEmotionPalette(allEntries);
 
-  const stagger = useStagger(3);
+  const stagger = useStagger(1);
+
+  // The story itself is the point of opening this screen -- everything else
+  // (stats, facts, charts) is detail worth having but not worth greeting
+  // someone with, so it stays collapsed until asked for instead of stacking
+  // into a wall of text on open.
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [renderDetails, setRenderDetails] = useState(false);
+  const detailsAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (detailsOpen) {
+      setRenderDetails(true);
+      detailsAnim.setValue(0);
+      Animated.timing(detailsAnim, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+    } else {
+      Animated.timing(detailsAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => setRenderDetails(false));
+    }
+  }, [detailsOpen, detailsAnim]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -397,9 +415,23 @@ export default function ReportSummary() {
                 <Text style={styles.narrativeMark}>❝</Text>
                 <Text style={styles.narrative}>{r.narrative}</Text>
               </View>
+
+              <Pressable style={styles.toggle} onPress={() => setDetailsOpen((v) => !v)} hitSlop={6}>
+                <Text style={styles.toggleText}>{detailsOpen ? 'Свернуть' : 'Показать подробнее'}</Text>
+                <Animated.View
+                  style={{
+                    transform: [
+                      { rotate: detailsAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] }) },
+                    ],
+                  }}
+                >
+                  <Ionicons name="chevron-down" size={16} color={colors.roseDark} />
+                </Animated.View>
+              </Pressable>
             </Animated.View>
 
-            <Animated.View style={stagger[1]}>
+            {renderDetails && (
+            <Animated.View style={{ opacity: detailsAnim }}>
               {(r.weather.mine || r.weather.partner) && (
                 <View style={styles.weatherRow}>
                   {r.weather.mine && (
@@ -476,47 +508,48 @@ export default function ReportSummary() {
                   ))}
                 </View>
               )}
-            </Animated.View>
 
-            {stats && (
-              <Animated.View style={[styles.statsSection, stagger[2]]}>
-                <Text style={styles.sectionLabel}>Кто сколько писал</Text>
+              {stats && (
+                <View style={styles.statsSection}>
+                  <Text style={styles.sectionLabel}>Кто сколько писал</Text>
 
-                <View style={styles.statTableHeader}>
-                  <View style={{ flex: 1 }} />
-                  <View style={styles.statValueCol}>
-                    <Avatar emoji={user.avatarEmoji} uri={user.avatarUri} size={30} />
-                  </View>
-                  {hasPartner && (
+                  <View style={styles.statTableHeader}>
+                    <View style={{ flex: 1 }} />
                     <View style={styles.statValueCol}>
-                      <Avatar emoji={partner!.avatarEmoji} uri={partner!.avatarUri} size={30} />
+                      <Avatar emoji={user.avatarEmoji} uri={user.avatarUri} size={30} />
                     </View>
+                    {hasPartner && (
+                      <View style={styles.statValueCol}>
+                        <Avatar emoji={partner!.avatarEmoji} uri={partner!.avatarUri} size={30} />
+                      </View>
+                    )}
+                  </View>
+
+                  <StatTableRow icon="✍️" label="Записи" mine={stats.entriesMine} partner={stats.entriesPartner} hasPartner={hasPartner} />
+                  <StatTableRow icon="📝" label="Слов" mine={stats.wordsMine} partner={stats.wordsPartner} hasPartner={hasPartner} />
+                  {(stats.photosMine > 0 || (stats.photosPartner ?? 0) > 0) && (
+                    <StatTableRow icon="📷" label="Фото" mine={stats.photosMine} partner={stats.photosPartner} hasPartner={hasPartner} />
+                  )}
+                  {(stats.moodMine || stats.moodPartner) && (
+                    <StatTableRow
+                      icon="💭"
+                      label="Настроение"
+                      mine={stats.moodMine ? emotionMeta(stats.moodMine).emoji : '—'}
+                      partner={stats.moodPartner ? emotionMeta(stats.moodPartner).emoji : hasPartner ? '—' : null}
+                      hasPartner={hasPartner}
+                      last
+                    />
                   )}
                 </View>
+              )}
 
-                <StatTableRow icon="✍️" label="Записи" mine={stats.entriesMine} partner={stats.entriesPartner} hasPartner={hasPartner} />
-                <StatTableRow icon="📝" label="Слов" mine={stats.wordsMine} partner={stats.wordsPartner} hasPartner={hasPartner} />
-                {(stats.photosMine > 0 || (stats.photosPartner ?? 0) > 0) && (
-                  <StatTableRow icon="📷" label="Фото" mine={stats.photosMine} partner={stats.photosPartner} hasPartner={hasPartner} />
-                )}
-                {(stats.moodMine || stats.moodPartner) && (
-                  <StatTableRow
-                    icon="💭"
-                    label="Настроение"
-                    mine={stats.moodMine ? emotionMeta(stats.moodMine).emoji : '—'}
-                    partner={stats.moodPartner ? emotionMeta(stats.moodPartner).emoji : hasPartner ? '—' : null}
-                    hasPartner={hasPartner}
-                    last
-                  />
-                )}
-              </Animated.View>
-            )}
-
-            {!!r.reflectionQuestion && (
-              <View style={styles.reflectionBox}>
-                <Ionicons name="chatbubbles-outline" size={18} color={colors.roseDark} style={{ marginBottom: spacing.sm }} />
-                <Text style={styles.reflectionText}>{r.reflectionQuestion}</Text>
-              </View>
+              {!!r.reflectionQuestion && (
+                <View style={styles.reflectionBox}>
+                  <Ionicons name="chatbubbles-outline" size={18} color={colors.roseDark} style={{ marginBottom: spacing.sm }} />
+                  <Text style={styles.reflectionText}>{r.reflectionQuestion}</Text>
+                </View>
+              )}
+            </Animated.View>
             )}
 
             {!id && (
@@ -598,6 +631,12 @@ const styles = StyleSheet.create({
     ...type.h1, color: colors.roseLight, lineHeight: 28, marginBottom: -spacing.sm,
   },
   narrative: { ...type.bodyLg, color: colors.ink, lineHeight: 27 },
+  toggle: {
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'center', marginTop: spacing.xl,
+    backgroundColor: colors.roseMist, borderRadius: radius.pill,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
+  },
+  toggleText: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.roseDark, marginRight: 4 },
   weatherRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.xl },
   weatherChip: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.skyMist,
