@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
+import * as Sentry from '@sentry/react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   useFonts,
@@ -21,6 +22,16 @@ import { useAuthStore } from '../src/store/useAuthStore';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+// A DSN is a public identifier, not a secret -- fine to embed in the client
+// bundle. No-op locally where it's unset; nothing here is required to run
+// the app in dev.
+if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+    tracesSampleRate: 0.2,
+  });
+}
+
 // Without this, a push that arrives while the app is open in the foreground
 // (the common case for two partners testing side by side) is delivered
 // silently -- no banner, no sound -- which looks indistinguishable from the
@@ -34,7 +45,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export default function RootLayout() {
+function RootLayout() {
   const [fontsLoaded] = useFonts({
     Fraunces_500Medium,
     Fraunces_500Medium_Italic,
@@ -84,3 +95,5 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(RootLayout);
