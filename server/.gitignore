@@ -1,5 +1,9 @@
 node_modules/
 dist/
 .env
-.env.test
 .env.stress
+
+# .env.test is intentionally NOT ignored: it only ever holds dummy,
+# test-only values (a throwaway JWT secret, a local Postgres connection
+# string for the disposable together_test database) and CI needs it to
+# run the server test suite at all.
