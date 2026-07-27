@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: together
+      POSTGRES_PASSWORD: together-dev-password
+      POSTGRES_DB: together_dev
+    ports:
+      - '5433:5432'
+    volumes:
+      - together-postgres-data:/var/lib/postgresql/data
+      - ./docker-init:/docker-entrypoint-initdb.d
+
+volumes:
+  together-postgres-data:

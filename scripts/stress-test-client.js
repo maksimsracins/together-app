@@ -11,7 +11,6 @@
 'use strict';
 
 const path = require('path');
-const fs = require('fs');
 const { execSync } = require('child_process');
 const { createRequire } = require('module');
 
@@ -103,13 +102,18 @@ async function runRequestBurstBenchmark() {
   // server dir, since this script lives in the client's own scripts/ folder.
   const serverRequire = createRequire(path.join(SERVER_DIR, 'package.json'));
   serverRequire('dotenv').config({ path: ENV_FILE, override: true });
+  // Bypass the auth rate limiter (own dedicated test covers that) so re-runs
+  // during iteration never get blocked by earlier runs' signups.
+  process.env.NODE_ENV = 'test';
 
-  const dbFile = path.resolve(SERVER_DIR, 'prisma/stress-client.db');
-  for (const f of [dbFile, `${dbFile}-journal`]) {
-    if (fs.existsSync(f)) fs.unlinkSync(f);
-  }
-  process.env.DATABASE_URL = `file:${dbFile}`;
-  execSync('npx prisma migrate deploy', { cwd: SERVER_DIR, env: process.env, stdio: 'inherit' });
+  // Shares the same together_stress Postgres database as server/scripts/
+  // stress-test.ts (.env.stress already points there) -- fine since these
+  // are manual, sequential-use scripts, never run concurrently.
+  execSync('npx prisma migrate reset --force --skip-generate --skip-seed', {
+    cwd: SERVER_DIR,
+    env: process.env,
+    stdio: 'inherit',
+  });
 
   serverRequire('tsx/cjs');
   const { app } = serverRequire(path.resolve(SERVER_DIR, 'src/app.ts'));

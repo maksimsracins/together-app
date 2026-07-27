@@ -1,12 +1,11 @@
 /* eslint-disable no-console */
 // Standalone load/perf probe -- not part of `npm test`. Boots the real app
-// against a dedicated, disposable SQLite file (never touches dev.db or
-// test.db), fires concurrent requests at the hottest endpoints, and reports
-// latency percentiles + error counts. Also specifically probes concurrent
-// writes to the same couple, since SQLite is a single-writer database and
-// that's exactly the shape of traffic two real partners generate.
+// against a dedicated, disposable Postgres database (together_stress, never
+// touches together_dev or together_test), fires concurrent requests at the
+// hottest endpoints, and reports latency percentiles + error counts. Also
+// specifically probes concurrent writes to the same couple, since that's
+// exactly the shape of traffic two real partners generate.
 import path from 'path';
-import fs from 'fs';
 import { execSync } from 'child_process';
 import dotenv from 'dotenv';
 
@@ -14,11 +13,17 @@ const SERVER_DIR = path.resolve(__dirname, '..');
 const ENV_FILE = path.resolve(SERVER_DIR, '.env.stress');
 dotenv.config({ path: ENV_FILE, override: true });
 
-const dbFile = path.resolve(SERVER_DIR, 'prisma/stress.db');
-for (const f of [dbFile, `${dbFile}-journal`]) {
-  if (fs.existsSync(f)) fs.unlinkSync(f);
-}
-execSync('npx prisma migrate deploy', { cwd: SERVER_DIR, env: process.env, stdio: 'inherit' });
+// This script measures raw throughput/contention (bcrypt cost, write
+// contention, etc.), not anti-abuse behavior -- rate limiting has its own
+// dedicated test (tests/rateLimiters.test.ts) and would otherwise dominate
+// every result here the same way it's designed to against a real attacker.
+process.env.NODE_ENV = 'test';
+
+execSync('npx prisma migrate reset --force --skip-generate --skip-seed', {
+  cwd: SERVER_DIR,
+  env: process.env,
+  stdio: 'inherit',
+});
 
 // Imported only after env + schema are ready, so PrismaClient picks up the
 // stress DATABASE_URL instead of dev.db.
@@ -78,7 +83,7 @@ async function main() {
   await new Promise<void>((resolve) => server.once('listening', resolve));
   const port = (server.address() as { port: number }).port;
   const base = `http://127.0.0.1:${port}`;
-  console.log(`Stress server listening on ${base} (db: ${dbFile})`);
+  console.log(`Stress server listening on ${base} (db: ${process.env.DATABASE_URL})`);
 
   let failed = false;
 
@@ -147,7 +152,8 @@ async function main() {
 
   // --- Scenario 4: same-user concurrent writes -- the real contention case ---
   // Two real partners hammering the same couple's data (rapid-fire journaling,
-  // reactions, etc.) is the one place SQLite's single-writer model can bite.
+  // reactions, etc.) is the shape of traffic most likely to expose row/table
+  // lock contention under Postgres's connection pooling.
   {
     const signup = await fetch(`${base}/api/auth/signup`, {
       method: 'POST',
@@ -171,7 +177,7 @@ async function main() {
     const { errors } = report('Concurrent writes to ONE user (N=100, same row lineage)', timings, Date.now() - start);
     if (errors > 0) {
       failed = true;
-      console.log('  ^ SQLite write contention detected -- see fix notes in the script header.');
+      console.log('  ^ Write contention detected under concurrent load.');
     }
 
     const listStart = Date.now();
