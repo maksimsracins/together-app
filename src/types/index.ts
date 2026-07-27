@@ -32,7 +32,10 @@ export interface Entry {
   tags: string[];
   hasPhoto: boolean;
   hasAudio: boolean;
-  photoUri: string | null;
+  // Omitted (not even null) from list responses -- a full data URI per row
+  // would balloon a lifetime list to hundreds of MB. Only GET /entries/:id
+  // includes it; list views show `hasPhoto` as an indicator instead.
+  photoUri?: string | null;
   weekId?: string;
   includedInReportId: string | null;
   createdAt: string; // ISO

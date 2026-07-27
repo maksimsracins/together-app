@@ -46,3 +46,13 @@ export function serializeEntry(entry: Entry) {
     createdAt: entry.createdAt.toISOString(),
   };
 }
+
+// Lists can span a user's entire history (Calendar's "all" fetch), while
+// photoUri is a full base64 data URI up to 5MB -- including it per row turns
+// a lifetime list into a payload of hundreds of megabytes. Lists only ever
+// need `hasPhoto` to show an indicator; the actual photo is fetched once,
+// on demand, via GET /api/entries/:id when a specific entry is opened.
+export function serializeEntryListItem(entry: Entry) {
+  const { photoUri: _photoUri, ...rest } = serializeEntry(entry);
+  return rest;
+}

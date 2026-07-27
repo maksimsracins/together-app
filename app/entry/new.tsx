@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { EmotionPicker } from '../../src/components/EmotionPicker';
 import { useAppStore } from '../../src/store/useAppStore';
 import { ApiError } from '../../src/services/http';
-import { listAllEntries } from '../../src/services/entries';
+import { getEntry } from '../../src/services/entries';
 import { EmotionKey, Entry, EntryType } from '../../src/types';
 import { colors, radius, spacing, type } from '../../src/theme';
 
@@ -52,9 +52,12 @@ export default function NewEntry() {
     }
     let cancelled = false;
     setResolving(true);
-    listAllEntries()
-      .then((all) => {
-        if (!cancelled) setFetchedExisting(all.find((e) => e.id === id) ?? null);
+    getEntry(id)
+      .then((entry) => {
+        if (!cancelled) setFetchedExisting(entry);
+      })
+      .catch(() => {
+        if (!cancelled) setFetchedExisting(null);
       })
       .finally(() => {
         if (!cancelled) setResolving(false);
@@ -87,7 +90,7 @@ export default function NewEntry() {
     if (!resolving && fetchedExisting) {
       setEmotion(fetchedExisting.emotion);
       setText(fetchedExisting.text);
-      setPhotoUri(fetchedExisting.photoUri);
+      setPhotoUri(fetchedExisting.photoUri ?? null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolving]);

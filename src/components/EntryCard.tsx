@@ -49,6 +49,12 @@ export function EntryCard({
           <Text style={styles.emotionBadge}>
             {emo.emoji} {emo.label}
           </Text>
+          {/* Older entries loaded via the lifetime list arrive without photoUri
+              (only hasPhoto) to keep that payload bounded -- opening the entry
+              fetches the real photo. */}
+          {entry.hasPhoto && !entry.photoUri && (
+            <Ionicons name="image-outline" size={15} color={colors.inkMuted} style={styles.metaIcon} />
+          )}
           {entry.hasAudio && <Ionicons name="mic-outline" size={15} color={colors.inkMuted} style={styles.metaIcon} />}
           {entry.tags.map((tag) => (
             <Text key={tag} style={styles.tag}>

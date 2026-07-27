@@ -224,6 +224,59 @@ describe('entries CRUD', () => {
   });
 });
 
+const photoEntry = { ...validEntry, photoUri: 'data:image/jpeg;base64,' + 'A'.repeat(1000) };
+
+describe('GET /api/entries/:id (single-entry detail)', () => {
+  it('returns the full entry, including photoUri', async () => {
+    const alice = await signupAndLogin('Alice', 'detail-basic');
+    const created = await request(app).post('/api/entries').set('Authorization', `Bearer ${alice.token}`).send(photoEntry);
+
+    const res = await request(app).get(`/api/entries/${created.body.id}`).set('Authorization', `Bearer ${alice.token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.photoUri).toBe(photoEntry.photoUri);
+  });
+
+  it("rejects fetching another user's entry", async () => {
+    const alice = await signupAndLogin('Alice', 'detail-forbidden-a');
+    const bob = await signupAndLogin('Bob', 'detail-forbidden-b');
+    const created = await request(app).post('/api/entries').set('Authorization', `Bearer ${alice.token}`).send(photoEntry);
+
+    const res = await request(app).get(`/api/entries/${created.body.id}`).set('Authorization', `Bearer ${bob.token}`);
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 404 for a nonexistent entry', async () => {
+    const alice = await signupAndLogin('Alice', 'detail-missing');
+    const res = await request(app).get('/api/entries/does-not-exist').set('Authorization', `Bearer ${alice.token}`);
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('list endpoints omit photoUri only for the lifetime (all=true) query', () => {
+  // A user's full history can span years and hundreds of photos; each
+  // photoUri is a full base64 data URI up to 5MB, so including it in an
+  // unbounded list turns the Calendar tab's every-focus fetch into a
+  // multi-hundred-MB response. The current week is naturally bounded, so it
+  // keeps photoUri -- only `all=true` needs the lighter shape.
+  it('includes photoUri in the default (current week) list', async () => {
+    const alice = await signupAndLogin('Alice', 'list-photo-week');
+    await request(app).post('/api/entries').set('Authorization', `Bearer ${alice.token}`).send(photoEntry);
+
+    const res = await request(app).get('/api/entries').set('Authorization', `Bearer ${alice.token}`);
+    expect(res.body[0].photoUri).toBe(photoEntry.photoUri);
+    expect(res.body[0].hasPhoto).toBe(true);
+  });
+
+  it('omits photoUri from the all=true list, but keeps hasPhoto', async () => {
+    const alice = await signupAndLogin('Alice', 'list-photo-all');
+    await request(app).post('/api/entries').set('Authorization', `Bearer ${alice.token}`).send(photoEntry);
+
+    const res = await request(app).get('/api/entries?all=true').set('Authorization', `Bearer ${alice.token}`);
+    expect(res.body[0].photoUri).toBeUndefined();
+    expect(res.body[0].hasPhoto).toBe(true);
+  });
+});
+
 describe('entry reactions', () => {
   it('lets the author react to their own entry', async () => {
     const alice = await signupAndLogin('Alice', 'reaction-own');

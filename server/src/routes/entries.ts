@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { AuthedRequest, requireAuth } from '../auth';
-import { serializeEntry } from '../serializers';
+import { serializeEntry, serializeEntryListItem } from '../serializers';
 import { weekIdFor } from '../week';
 import { sendPushNotification } from '../push';
 
@@ -42,7 +42,11 @@ entriesRouter.get('/', async (req: AuthedRequest, res) => {
     where: { userId: req.userId, ...(all ? {} : { weekId }) },
     orderBy: { createdAt: 'desc' },
   });
-  res.json(entries.map(serializeEntry));
+  // `all=true` spans a user's entire history and is fetched on every Calendar
+  // focus -- with photoUri that turns into hundreds of MB for anyone with
+  // more than a handful of photos. A single week's worth is naturally bounded,
+  // so only the unbounded query needs the lighter serializer.
+  res.json(entries.map(all ? serializeEntryListItem : serializeEntry));
 });
 
 entriesRouter.get('/partner', async (req: AuthedRequest, res) => {
@@ -77,7 +81,19 @@ entriesRouter.get('/partner', async (req: AuthedRequest, res) => {
     where: { userId: partner.id, createdAt: { lte: latestReport.createdAt } },
     orderBy: { createdAt: 'desc' },
   });
-  res.json(entries.map(serializeEntry));
+  res.json(entries.map(serializeEntryListItem));
+});
+
+// Full detail for one entry, photo included -- fetched on demand only when
+// actually opening it (from the calendar's day list or to edit), instead of
+// paying the photoUri cost for every entry on every list fetch.
+entriesRouter.get('/:id', async (req: AuthedRequest, res) => {
+  const entry = await db.entry.findUnique({ where: { id: req.params.id } });
+  if (!entry || entry.userId !== req.userId) {
+    res.status(404).json({ error: 'Запись не найдена' });
+    return;
+  }
+  res.json(serializeEntry(entry));
 });
 
 // A lighter-weight signal than /partner: just which dates your partner wrote
