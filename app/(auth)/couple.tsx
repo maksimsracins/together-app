@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { requireOptionalNativeModule } from 'expo-modules-core';
@@ -26,6 +26,10 @@ export default function CoupleSetup() {
   const [copied, setCopied] = useState(false);
   const [creating, setCreating] = useState(false);
   const [clipboardAvailable] = useState(() => Boolean(requireOptionalNativeModule('ExpoClipboard')));
+  // Same synchronous-guard fix as elsewhere: disabling via state alone leaves
+  // a window where a fast double-tap fires the handler twice.
+  const creatingRef = useRef(false);
+  const joiningRef = useRef(false);
 
   useEffect(() => {
     // Only auto-fetch when the user already belongs to a couple (returning to view
@@ -39,6 +43,8 @@ export default function CoupleSetup() {
   }, [mode, inviteCode, user?.coupleId]);
 
   const handleCreateCouple = async () => {
+    if (creatingRef.current) return;
+    creatingRef.current = true;
     setCreating(true);
     setError(null);
     try {
@@ -47,12 +53,14 @@ export default function CoupleSetup() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось создать пару');
     } finally {
+      creatingRef.current = false;
       setCreating(false);
     }
   };
 
   const handleJoin = async () => {
-    if (!code.trim()) return;
+    if (!code.trim() || joiningRef.current) return;
+    joiningRef.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -62,6 +70,7 @@ export default function CoupleSetup() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось присоединиться. Проверьте код.');
     } finally {
+      joiningRef.current = false;
       setLoading(false);
     }
   };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +15,7 @@ import { AVATAR_EMOJIS, LOVE_LANGUAGES } from '../../src/data/catalog';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { ApiError } from '../../src/services/http';
 import { colors, radius, spacing, type } from '../../src/theme';
+import { isPhotoTooLarge } from '../../src/utils/photo';
 
 export default function EditProfile() {
   const user = useAuthStore((s) => s.user)!;
@@ -39,6 +40,10 @@ export default function EditProfile() {
   const [city, setCity] = useState(user.city ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Same synchronous-guard fix as entry/new.tsx's save/delete: `disabled=
+  // {saving}` can't stop a second tap that lands before the state update
+  // from the first one has actually re-rendered the button.
+  const savingRef = useRef(false);
 
   const toggleLoveLanguage = (l: string) => {
     setLoveLanguages((prev) => (prev.includes(l) ? prev.filter((x) => x !== l) : [...prev, l]));
@@ -53,7 +58,8 @@ export default function EditProfile() {
   const canSave = name.trim().length > 0;
 
   const handleSave = async () => {
-    if (!canSave) return;
+    if (!canSave || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setError(null);
     try {
@@ -74,6 +80,7 @@ export default function EditProfile() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось сохранить профиль');
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -98,7 +105,14 @@ export default function EditProfile() {
       base64: true,
     });
     const asset = result.assets?.[0];
-    if (!result.canceled && asset?.base64) setAvatarUri(`data:image/jpeg;base64,${asset.base64}`);
+    if (!result.canceled && asset?.base64) {
+      const dataUri = `data:image/jpeg;base64,${asset.base64}`;
+      if (isPhotoTooLarge(dataUri)) {
+        Alert.alert('Фото слишком большое', 'Попробуйте выбрать другое фото.');
+      } else {
+        setAvatarUri(dataUri);
+      }
+    }
   };
 
   const pickFromCamera = async () => {
@@ -114,7 +128,14 @@ export default function EditProfile() {
       base64: true,
     });
     const asset = result.assets?.[0];
-    if (!result.canceled && asset?.base64) setAvatarUri(`data:image/jpeg;base64,${asset.base64}`);
+    if (!result.canceled && asset?.base64) {
+      const dataUri = `data:image/jpeg;base64,${asset.base64}`;
+      if (isPhotoTooLarge(dataUri)) {
+        Alert.alert('Фото слишком большое', 'Попробуйте сделать снимок заново.');
+      } else {
+        setAvatarUri(dataUri);
+      }
+    }
   };
 
   const handleLeaveCouple = () => {

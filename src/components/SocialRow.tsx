@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -10,6 +10,7 @@ import { colors, radius, spacing, type } from '../theme';
 export function SocialRow() {
   const loginWithApple = useAuthStore((s) => s.loginWithApple);
   const [appleLoading, setAppleLoading] = useState(false);
+  const appleLoadingRef = useRef(false);
 
   const comingSoon = () => Alert.alert('Скоро', 'Вход через соцсети появится в одном из следующих обновлений.');
 
@@ -18,6 +19,8 @@ export function SocialRow() {
       comingSoon();
       return;
     }
+    if (appleLoadingRef.current) return;
+    appleLoadingRef.current = true;
     setAppleLoading(true);
     try {
       const credential = await AppleAuthentication.signInAsync({
@@ -41,6 +44,7 @@ export function SocialRow() {
         Alert.alert('Не удалось войти', e instanceof ApiError ? e.message : 'Проверьте соединение и попробуйте снова.');
       }
     } finally {
+      appleLoadingRef.current = false;
       setAppleLoading(false);
     }
   };

@@ -11,6 +11,7 @@ import { ApiError } from '../../src/services/http';
 import { getEntry } from '../../src/services/entries';
 import { EmotionKey, Entry, EntryType } from '../../src/types';
 import { colors, radius, spacing, type } from '../../src/theme';
+import { isPhotoTooLarge } from '../../src/utils/photo';
 
 const MAX_LEN = 1000;
 
@@ -113,7 +114,12 @@ export default function NewEntry() {
       });
       const asset = result.assets?.[0];
       if (!result.canceled && asset?.base64) {
-        setPhotoUri(`data:image/jpeg;base64,${asset.base64}`);
+        const dataUri = `data:image/jpeg;base64,${asset.base64}`;
+        if (isPhotoTooLarge(dataUri)) {
+          setError('Фото слишком большое. Попробуйте выбрать другое или сделать снимок заново.');
+        } else {
+          setPhotoUri(dataUri);
+        }
       }
     } finally {
       setPickingPhoto(false);

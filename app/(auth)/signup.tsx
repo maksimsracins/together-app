@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Screen } from '../../src/components/Screen';
@@ -17,11 +17,15 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // See login.tsx / entry/new.tsx: state-based disabling isn't synchronous,
+  // so a fast double-tap needs a ref guard to actually block the second call.
+  const loadingRef = useRef(false);
 
   const canSubmit = name.trim().length > 0 && email.trim().length > 3 && password.length >= 6;
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -30,6 +34,7 @@ export default function Signup() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось создать аккаунт. Проверьте соединение.');
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Screen } from '../../src/components/Screen';
@@ -16,11 +16,16 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // A fast double-tap can fire the handler twice before `disabled={loading}`
+  // actually re-renders -- a ref flips synchronously so the second call bails
+  // out immediately regardless of render timing.
+  const loadingRef = useRef(false);
 
   const canSubmit = email.trim().length > 3 && password.length > 0;
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -29,6 +34,7 @@ export default function Login() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось войти. Проверьте соединение.');
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   };
