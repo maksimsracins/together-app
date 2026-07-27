@@ -493,6 +493,16 @@ export default function ReportSummary() {
               {moodPoints.length > 1 && (
                 <View style={styles.moodSection}>
                   <Text style={styles.sectionLabel}>Настроение по дням</Text>
+                  <View style={styles.moodLegend}>
+                    <View style={styles.moodLegendItem}>
+                      <View style={[styles.moodLegendDot, { backgroundColor: colors.sage }]} />
+                      <Text style={styles.moodLegendText}>светлее, спокойнее</Text>
+                    </View>
+                    <View style={styles.moodLegendItem}>
+                      <View style={[styles.moodLegendDot, { backgroundColor: colors.rose }]} />
+                      <Text style={styles.moodLegendText}>тяжелее, тревожнее</Text>
+                    </View>
+                  </View>
                   <MoodByDayChart points={moodPoints} />
                 </View>
               )}
@@ -686,6 +696,10 @@ const styles = StyleSheet.create({
   paletteDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
   paletteLegendText: { ...type.bodySm, color: colors.inkSoft },
   moodSection: { marginTop: spacing.xl },
+  moodLegend: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: spacing.md },
+  moodLegendItem: { flexDirection: 'row', alignItems: 'center', marginRight: spacing.lg, marginBottom: spacing.xs },
+  moodLegendDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
+  moodLegendText: { ...type.bodySm, color: colors.inkMuted },
   moodChartRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end',
   },
