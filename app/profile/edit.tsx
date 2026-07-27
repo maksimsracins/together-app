@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -13,6 +13,7 @@ import { Chip } from '../../src/components/Chip';
 import { LoveLanguagesInfoButton } from '../../src/components/LoveLanguagesInfo';
 import { AVATAR_EMOJIS, LOVE_LANGUAGES } from '../../src/data/catalog';
 import { useAuthStore } from '../../src/store/useAuthStore';
+import { exportMyData } from '../../src/services/users';
 import { ApiError } from '../../src/services/http';
 import { colors, radius, spacing, type } from '../../src/theme';
 import { isPhotoTooLarge } from '../../src/utils/photo';
@@ -44,6 +45,26 @@ export default function EditProfile() {
   // {saving}` can't stop a second tap that lands before the state update
   // from the first one has actually re-rendered the button.
   const savingRef = useRef(false);
+  const [exporting, setExporting] = useState(false);
+  const exportingRef = useRef(false);
+
+  const handleExportData = async () => {
+    if (exportingRef.current) return;
+    exportingRef.current = true;
+    setExporting(true);
+    try {
+      const data = await exportMyData();
+      await Share.share({
+        title: 'Мои данные Together',
+        message: JSON.stringify(data, null, 2),
+      });
+    } catch {
+      Alert.alert('Ошибка', 'Не удалось экспортировать данные. Попробуйте ещё раз.');
+    } finally {
+      exportingRef.current = false;
+      setExporting(false);
+    }
+  };
 
   const toggleLoveLanguage = (l: string) => {
     setLoveLanguages((prev) => (prev.includes(l) ? prev.filter((x) => x !== l) : [...prev, l]));
@@ -374,6 +395,13 @@ export default function EditProfile() {
         )}
 
         <Text style={[styles.label, { marginTop: spacing.lg }]}>Аккаунт</Text>
+        <Button
+          label={exporting ? 'Готовим экспорт…' : 'Экспортировать мои данные'}
+          variant="outline"
+          loading={exporting}
+          onPress={handleExportData}
+          style={{ marginBottom: spacing.md }}
+        />
         <Button label="Удалить аккаунт" variant="outline" onPress={handleDeleteAccount} />
       </ScrollView>
       </KeyboardAvoidingView>

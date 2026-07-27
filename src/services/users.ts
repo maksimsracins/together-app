@@ -35,3 +35,7 @@ export function registerPushToken(pushToken: string | null) {
 export function deleteMe() {
   return api<void>('/api/me', { method: 'DELETE' });
 }
+
+export function exportMyData() {
+  return api<Record<string, unknown>>('/api/me/export');
+}

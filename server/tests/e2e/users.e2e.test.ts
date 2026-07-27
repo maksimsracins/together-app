@@ -126,6 +126,45 @@ describe('GET /api/me/partner', () => {
   });
 });
 
+describe('GET /api/me/export (GDPR data export)', () => {
+  it('rejects without a token', async () => {
+    const res = await request(app).get('/api/me/export');
+    expect(res.status).toBe(401);
+  });
+
+  it('includes profile, entries (with photoUri), and notifications', async () => {
+    const alice = await signupAndLogin('Alice', 'export-basic');
+    const entry = await request(app)
+      .post('/api/entries')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .send({ type: 'joy', emotion: 'joy', text: 'exported entry', tags: [], photoUri: 'data:image/jpeg;base64,AAAA' });
+
+    const res = await request(app).get('/api/me/export').set('Authorization', `Bearer ${alice.token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.profile.id).toBe(alice.userId);
+    expect(res.body.entries).toHaveLength(1);
+    expect(res.body.entries[0].id).toBe(entry.body.id);
+    expect(res.body.entries[0].photoUri).toBe('data:image/jpeg;base64,AAAA');
+    expect(res.body.notifications).toEqual([]);
+    expect(res.body.reports).toEqual([]);
+    expect(res.body.exportedAt).toEqual(expect.any(String));
+  });
+
+  it("does not include another user's entries", async () => {
+    const alice = await signupAndLogin('Alice', 'export-isolation-a');
+    const bob = await signupAndLogin('Bob', 'export-isolation-b');
+    await request(app).post('/api/entries').set('Authorization', `Bearer ${bob.token}`).send({
+      type: 'joy',
+      emotion: 'joy',
+      text: "bob's entry",
+      tags: [],
+    });
+
+    const res = await request(app).get('/api/me/export').set('Authorization', `Bearer ${alice.token}`);
+    expect(res.body.entries).toEqual([]);
+  });
+});
+
 describe('DELETE /api/me (account deletion)', () => {
   it('deletes a solo account and invalidates its token', async () => {
     const alice = await signupAndLogin('Alice', 'delete-solo');

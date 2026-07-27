@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { AuthedRequest, requireAuth } from '../auth';
-import { serializeUser } from '../serializers';
+import { serializeUser, serializeEntry, serializeNotification } from '../serializers';
 
 export const usersRouter = Router();
 
@@ -97,6 +97,43 @@ usersRouter.get('/me/partner', async (req: AuthedRequest, res) => {
     where: { coupleId: user.coupleId, id: { not: user.id } },
   });
   res.json(partner ? serializeUser(partner) : null);
+});
+
+// GDPR/CCPA "right to access": everything this app holds that's tied to the
+// requesting user. A one-off, on-demand export -- unlike the list endpoints
+// elsewhere, including full photoUri here is fine (this is one request per
+// user, not a payload refetched on every screen focus).
+usersRouter.get('/me/export', async (req: AuthedRequest, res) => {
+  const user = await db.user.findUnique({ where: { id: req.userId } });
+  if (!user) {
+    res.status(404).json({ error: 'Пользователь не найден' });
+    return;
+  }
+
+  const [entries, notifications, reports] = await Promise.all([
+    db.entry.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' } }),
+    db.notification.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' } }),
+    user.coupleId
+      ? db.weeklyReport.findMany({ where: { coupleId: user.coupleId }, orderBy: { createdAt: 'desc' } })
+      : Promise.resolve([]),
+  ]);
+
+  res.json({
+    exportedAt: new Date().toISOString(),
+    profile: serializeUser(user),
+    entries: entries.map(serializeEntry),
+    notifications: notifications.map(serializeNotification),
+    // Reports are couple-level (blended from both partners' entries), but
+    // they're derived from this user's own data and shared with them, so
+    // they're part of what this account has access to.
+    reports: reports.map((r) => ({
+      id: r.id,
+      weekId: r.weekId,
+      weekLabel: r.weekLabel,
+      generatedAt: r.createdAt.toISOString(),
+      report: JSON.parse(r.reportJson),
+    })),
+  });
 });
 
 usersRouter.delete('/me', async (req: AuthedRequest, res) => {
