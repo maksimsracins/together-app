@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import { randomInt } from 'crypto';
 import { db } from '../db';
 import { AuthedRequest, requireAuth } from '../auth';
+import { joinLimiter } from '../rateLimiters';
 
 export const couplesRouter = Router();
 
@@ -11,7 +13,10 @@ const WEEKDAY_NAMES = ['', 'понедельник', 'вторник', 'сред
 function randomCode() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
   let code = '';
-  for (let i = 0; i < 4; i++) code += alphabet[Math.floor(Math.random() * alphabet.length)];
+  // A cryptographically secure RNG doesn't fix the keyspace (still ~1M
+  // combinations), which is why joinLimiter exists -- but Math.random() is
+  // predictable enough that a keyspace this size shouldn't rely on it alone.
+  for (let i = 0; i < 4; i++) code += alphabet[randomInt(alphabet.length)];
   return `LOVE-${code}`;
 }
 
@@ -81,7 +86,7 @@ couplesRouter.post('/', async (req: AuthedRequest, res) => {
   res.status(201).json({ id: couple.id, inviteCode: couple.inviteCode });
 });
 
-couplesRouter.post('/join', async (req: AuthedRequest, res) => {
+couplesRouter.post('/join', joinLimiter, async (req: AuthedRequest, res) => {
   const { code } = req.body as { code?: string };
   if (!code) {
     res.status(400).json({ error: 'code обязателен' });

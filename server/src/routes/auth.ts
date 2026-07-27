@@ -4,10 +4,15 @@ import { db } from '../db';
 import { signToken } from '../auth';
 import { serializeUser } from '../serializers';
 import { verifyAppleIdentityToken } from '../apple';
+import { authLimiter } from '../rateLimiters';
 
 export const authRouter = Router();
+authRouter.use(authLimiter);
 
 const MAX_NAME_LENGTH = 20;
+// Used to equalize bcrypt.compare timing when there's no real hash to check
+// against (see /login) -- computed once at startup, matches no real password.
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync('no-such-user-timing-safe-placeholder', 10);
 
 authRouter.post('/signup', async (req, res) => {
   const { email, password, name } = req.body as { email?: string; password?: string; name?: string };
@@ -47,18 +52,12 @@ authRouter.post('/login', async (req, res) => {
   }
 
   const user = await db.user.findUnique({ where: { email: email.toLowerCase() } });
-  if (!user) {
-    res.status(401).json({ error: 'Неверный email или пароль' });
-    return;
-  }
-
-  if (!user.passwordHash) {
-    res.status(401).json({ error: 'Неверный email или пароль' });
-    return;
-  }
-
-  const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid) {
+  // Always run a bcrypt compare, even for a nonexistent user or a
+  // social-login-only account with no passwordHash -- otherwise those cases
+  // return in a few ms while a real wrong-password case takes bcrypt's ~50ms+,
+  // letting an attacker enumerate registered emails purely by timing.
+  const valid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
+  if (!user || !user.passwordHash || !valid) {
     res.status(401).json({ error: 'Неверный email или пароль' });
     return;
   }
