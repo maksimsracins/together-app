@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import { Sentry } from './sentry';
@@ -32,6 +33,13 @@ app.use((req, res, next) => {
 app.get('/health', (_req, res) => {
   res.json({ ok: true });
 });
+
+// `public/` sits next to both src/ and dist/ (one level under server/), so
+// this resolves the same way whether running from source (tsx) or the
+// compiled build -- no separate copy-to-dist build step needed.
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+app.get('/privacy', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'privacy.html')));
+app.get('/terms', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'terms.html')));
 
 app.use('/api/auth', authRouter);
 app.use('/api', usersRouter);
