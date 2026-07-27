@@ -17,6 +17,7 @@ interface AuthState {
   bootstrap: () => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
+  loginWithApple: (identityToken: string, fullName?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshPartner: () => Promise<void>;
   refreshMe: () => Promise<void>;
@@ -55,6 +56,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (email, password) => {
     set({ error: null });
     const user = await authService.login(email, password);
+    const partner = user.coupleId ? await usersService.getPartner().catch(() => null) : null;
+    set({ status: 'authed', user, partner });
+  },
+
+  loginWithApple: async (identityToken, fullName) => {
+    set({ error: null });
+    const user = await authService.loginWithApple(identityToken, fullName);
     const partner = user.coupleId ? await usersService.getPartner().catch(() => null) : null;
     set({ status: 'authed', user, partner });
   },

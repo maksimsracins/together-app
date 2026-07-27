@@ -26,6 +26,16 @@ export async function login(email: string, password: string): Promise<AppUser> {
   return res.user;
 }
 
+export async function loginWithApple(identityToken: string, fullName?: string): Promise<AppUser> {
+  const res = await api<AuthResponse>('/api/auth/apple', {
+    method: 'POST',
+    body: { identityToken, fullName },
+    auth: false,
+  });
+  await setToken(res.token);
+  return res.user;
+}
+
 export async function logout() {
   await setToken(null);
 }

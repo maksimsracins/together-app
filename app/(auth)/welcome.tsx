@@ -1,11 +1,41 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { Button } from '../../src/components/Button';
 import { colors, radius, spacing, type } from '../../src/theme';
+import { useAuthStore } from '../../src/store/useAuthStore';
 
 export default function Welcome() {
+  const loginWithApple = useAuthStore((s) => s.loginWithApple);
+  const [appleAvailable, setAppleAvailable] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    AppleAuthentication.isAvailableAsync().then(setAppleAvailable);
+  }, []);
+
+  const handleAppleSignIn = async () => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) return;
+      const fullName = credential.fullName
+        ? [credential.fullName.givenName, credential.fullName.familyName].filter(Boolean).join(' ')
+        : undefined;
+      await loginWithApple(credential.identityToken, fullName || undefined);
+    } catch (e: any) {
+      if (e?.code !== 'ERR_REQUEST_CANCELED') {
+        console.warn('Apple sign-in failed', e);
+      }
+    }
+  };
+
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.hero} edges={['top']}>
@@ -38,6 +68,16 @@ export default function Welcome() {
           onPress={() => router.push('/(auth)/login')}
           style={{ marginTop: spacing.md }}
         />
+
+        {appleAvailable && (
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+            cornerRadius={radius.md}
+            style={styles.appleButton}
+            onPress={handleAppleSignIn}
+          />
+        )}
       </SafeAreaView>
     </View>
   );
@@ -79,4 +119,5 @@ const styles = StyleSheet.create({
   },
   sheetTitle: { ...type.h2, color: colors.ink },
   sheetSubtitle: { ...type.body, color: colors.inkMuted, marginTop: spacing.xs },
+  appleButton: { width: '100%', height: 52, marginTop: spacing.md },
 });
