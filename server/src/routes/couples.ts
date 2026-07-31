@@ -127,19 +127,26 @@ couplesRouter.post('/join', joinLimiter, async (req: AuthedRequest, res) => {
   }
 
   await db.user.update({ where: { id: user.id }, data: { coupleId: couple.id } });
-  res.json({ id: couple.id, inviteCode: couple.inviteCode });
 
+  // Awaited, matching /leave's identical notification write below -- a
+  // notification row is a fast local insert, not worth the inconsistent
+  // "did the join succeed but the notification not exist yet" window that
+  // firing it after the response would leave open.
   if (otherMembers.length > 0) {
-    db.notification
-      .createMany({
+    try {
+      await db.notification.createMany({
         data: otherMembers.map((other) => ({
           userId: other.id,
           type: 'partner_joined',
           message: `${user.name} присоединил(-ась) к вам в Together 💞`,
         })),
-      })
-      .catch((err) => logError('Failed to notify of partner joining', err));
+      });
+    } catch (err) {
+      logError('Failed to notify of partner joining', err);
+    }
   }
+
+  res.json({ id: couple.id, inviteCode: couple.inviteCode });
 });
 
 couplesRouter.post('/leave', async (req: AuthedRequest, res) => {
