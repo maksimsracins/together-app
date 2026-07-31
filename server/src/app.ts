@@ -40,6 +40,7 @@ app.get('/health', (_req, res) => {
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 app.get('/privacy', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'privacy.html')));
 app.get('/terms', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'terms.html')));
+app.get('/support', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'support.html')));
 
 app.use('/api/auth', authRouter);
 app.use('/api', usersRouter);
