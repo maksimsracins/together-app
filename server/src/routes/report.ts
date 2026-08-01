@@ -11,6 +11,7 @@ import { getWeatherSummary, WeatherSummary } from '../weather';
 import { Couple, User } from '@prisma/client';
 import { logError } from '../sentry';
 import { generateReportLimiter } from '../rateLimiters';
+import { FREE_REPORT_LIMIT } from '../constants';
 
 export const reportRouter = Router();
 
@@ -127,13 +128,6 @@ function resolveWeather(
 
 type CoupleCtx = NonNullable<Awaited<ReturnType<typeof ensureCoupleContext>>>;
 
-// How many AI reports a non-premium couple gets before generation is gated.
-// Deliberately counted per-couple, not per-week: the reschedule endpoint
-// allows moving reportWeekday/reportHour up to 3x/7 days, which -- combined
-// with the scheduler's 30-min poll -- would otherwise let someone harvest a
-// fresh report every ~20h just by nudging the schedule, regardless of trial
-// length. An absolute count closes that off.
-const FREE_REPORT_LIMIT = 1;
 // Off by default: isPremium never becomes true today (no StoreKit wiring
 // yet), so flipping this on before subscriptions exist would permanently
 // block every couple after their first report. Read fresh (not cached at

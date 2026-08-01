@@ -4,6 +4,7 @@ import { db } from '../db';
 import { AuthedRequest, requireAuth } from '../auth';
 import { joinLimiter } from '../rateLimiters';
 import { logError } from '../sentry';
+import { FREE_REPORT_LIMIT } from '../constants';
 
 export const couplesRouter = Router();
 
@@ -199,6 +200,9 @@ couplesRouter.get('/settings', async (req: AuthedRequest, res) => {
       partnerActivityNotificationsEnabled: false,
       coupleCreatedAt: null,
       lastReportAt: null,
+      isPremium: false,
+      freeReportsUsed: 0,
+      freeReportLimit: FREE_REPORT_LIMIT,
     });
     return;
   }
@@ -218,6 +222,9 @@ couplesRouter.get('/settings', async (req: AuthedRequest, res) => {
     partnerActivityNotificationsEnabled: couple.partnerActivityNotificationsEnabled,
     coupleCreatedAt: couple.createdAt.toISOString(),
     lastReportAt: lastReport?.createdAt.toISOString() ?? null,
+    isPremium: couple.isPremium,
+    freeReportsUsed: couple.freeReportsUsed,
+    freeReportLimit: FREE_REPORT_LIMIT,
   });
 });
 

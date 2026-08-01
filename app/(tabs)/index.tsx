@@ -10,6 +10,7 @@ import { Avatar } from '../../src/components/Avatar';
 import { useAppStore } from '../../src/store/useAppStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useNotificationsStore } from '../../src/store/useNotificationsStore';
+import { usePremiumStore } from '../../src/store/usePremiumStore';
 import { updateCoupleSettings } from '../../src/services/couples';
 import { registerPushToken } from '../../src/services/users';
 import { ApiError } from '../../src/services/http';
@@ -60,6 +61,12 @@ export default function Home() {
   const unreadCount = useNotificationsStore((s) => s.unreadCount);
   const weeklyReport = useAppStore((s) => s.weeklyReport);
   const { coupleSettings } = useAppStore();
+  const isPremiumLocal = usePremiumStore((s) => s.isPremium);
+  const isPremium = isPremiumLocal || !!coupleSettings?.isPremium;
+  // Quota only blocks the *next* generation -- an already-generated report
+  // (this cycle's free one) is always viewable regardless of quota state.
+  const reportLocked =
+    !weeklyReport && !isPremium && !!coupleSettings && coupleSettings.freeReportsUsed >= coupleSettings.freeReportLimit;
   const g = greeting();
   const [now, setNow] = useState(() => new Date());
 
@@ -262,11 +269,11 @@ export default function Home() {
           weeklyReport && styles.reportCardReady,
           pressed && styles.reportCardPressed,
         ]}
-        onPress={() => router.push('/report/summary')}
+        onPress={() => router.push(reportLocked ? '/paywall' : '/report/summary')}
       >
         <View style={[styles.reportIconWrap, weeklyReport && styles.reportIconWrapReady]}>
           <Ionicons
-            name={weeklyReport ? 'book' : 'sparkles-outline'}
+            name={reportLocked ? 'lock-closed' : weeklyReport ? 'book' : 'sparkles-outline'}
             size={20}
             color={weeklyReport ? colors.white : colors.roseDark}
           />
@@ -274,7 +281,11 @@ export default function Home() {
         <View style={{ flex: 1 }}>
           <Text style={styles.reportTitle}>Ваша история недели</Text>
           <Text style={[styles.reportHint, weeklyReport && styles.reportHintReady]}>
-            {weeklyReport ? 'Готово — можно прочитать 💌' : 'Появится по расписанию отчёта'}
+            {reportLocked
+              ? 'Оформите Together Plus, чтобы получить отчёт'
+              : weeklyReport
+                ? 'Готово — можно прочитать 💌'
+                : 'Появится по расписанию отчёта'}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={weeklyReport ? colors.roseDark : colors.inkMuted} />

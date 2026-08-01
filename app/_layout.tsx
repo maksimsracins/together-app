@@ -19,6 +19,7 @@ import {
 } from '@expo-google-fonts/quicksand';
 import { colors } from '../src/theme';
 import { useAuthStore } from '../src/store/useAuthStore';
+import { initPurchases } from '../src/services/purchases';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -31,6 +32,10 @@ if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
     tracesSampleRate: 0.2,
   });
 }
+
+// Must run before any Purchases.* call (including the identify call in
+// useAuthStore's bootstrap) -- a no-op when no RC key is configured yet.
+initPurchases();
 
 // Without this, a push that arrives while the app is open in the foreground
 // (the common case for two partners testing side by side) is delivered
@@ -91,6 +96,10 @@ function RootLayout() {
         <Stack.Screen name="report/history" />
         <Stack.Screen name="profile/partner" />
         <Stack.Screen name="notifications" />
+        <Stack.Screen
+          name="paywall"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );

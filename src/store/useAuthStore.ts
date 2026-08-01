@@ -6,6 +6,8 @@ import * as usersService from '../services/users';
 import * as couplesService from '../services/couples';
 import { useAppStore } from './useAppStore';
 import { useNotificationsStore } from './useNotificationsStore';
+import { usePremiumStore } from './usePremiumStore';
+import { identifyPurchaser, logOutPurchaser } from '../services/purchases';
 
 type Status = 'bootstrapping' | 'guest' | 'authed';
 
@@ -26,6 +28,16 @@ interface AuthState {
   deleteAccount: () => Promise<void>;
 }
 
+// Identifies the RevenueCat purchaser as this user (so the server's webhook
+// can map a purchase back to the right couple) and refreshes the local
+// entitlement cache. Fire-and-forget: never blocks auth on RevenueCat being
+// reachable, and it's a no-op anyway when no RC key is configured yet.
+function syncPurchaserIdentity(userId: string) {
+  identifyPurchaser(userId)
+    .then(() => usePremiumStore.getState().refresh())
+    .catch(() => {});
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   status: 'bootstrapping',
   user: null,
@@ -42,6 +54,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const user = await usersService.getMe();
       const partner = user.coupleId ? await usersService.getPartner().catch(() => null) : null;
       set({ status: 'authed', user, partner });
+      syncPurchaserIdentity(user.id);
     } catch {
       await authService.logout();
       set({ status: 'guest', user: null, partner: null });
@@ -52,6 +65,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ error: null });
     const user = await authService.signup(email, password, name);
     set({ status: 'authed', user, partner: null });
+    syncPurchaserIdentity(user.id);
   },
 
   login: async (email, password) => {
@@ -59,6 +73,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const user = await authService.login(email, password);
     const partner = user.coupleId ? await usersService.getPartner().catch(() => null) : null;
     set({ status: 'authed', user, partner });
+    syncPurchaserIdentity(user.id);
   },
 
   loginWithApple: async (identityToken, fullName) => {
@@ -66,13 +81,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const user = await authService.loginWithApple(identityToken, fullName);
     const partner = user.coupleId ? await usersService.getPartner().catch(() => null) : null;
     set({ status: 'authed', user, partner });
+    syncPurchaserIdentity(user.id);
   },
 
   logout: async () => {
     await authService.logout();
+    await logOutPurchaser();
     set({ status: 'guest', user: null, partner: null });
     useAppStore.getState().reset();
     useNotificationsStore.getState().reset();
+    usePremiumStore.getState().reset();
   },
 
   refreshPartner: async () => {
@@ -104,8 +122,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   deleteAccount: async () => {
     await usersService.deleteMe();
     await authService.logout();
+    await logOutPurchaser();
     set({ status: 'guest', user: null, partner: null });
     useAppStore.getState().reset();
     useNotificationsStore.getState().reset();
+    usePremiumStore.getState().reset();
   },
 }));

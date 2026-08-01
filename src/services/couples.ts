@@ -25,6 +25,9 @@ export interface CoupleSettings {
   partnerActivityNotificationsEnabled: boolean;
   coupleCreatedAt: string | null;
   lastReportAt: string | null;
+  isPremium: boolean;
+  freeReportsUsed: number;
+  freeReportLimit: number;
 }
 
 export function getCoupleSettings() {

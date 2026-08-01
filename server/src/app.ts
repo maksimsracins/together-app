@@ -9,6 +9,7 @@ import { couplesRouter } from './routes/couples';
 import { entriesRouter } from './routes/entries';
 import { reportRouter } from './routes/report';
 import { notificationsRouter } from './routes/notifications';
+import { webhooksRouter } from './routes/webhooks';
 
 export const app = express();
 app.use(helmet());
@@ -42,6 +43,11 @@ app.get('/privacy', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'privacy.h
 app.get('/terms', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'terms.html')));
 app.get('/support', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'support.html')));
 
+// webhooksRouter must be registered before usersRouter -- usersRouter is
+// mounted at bare `/api` (with its own requireAuth), which would otherwise
+// match and intercept `/api/webhooks/*` first since Express dispatches by
+// registration order + path prefix, not by specificity.
+app.use('/api/webhooks', webhooksRouter);
 app.use('/api/auth', authRouter);
 app.use('/api', usersRouter);
 app.use('/api/couples', couplesRouter);
