@@ -127,6 +127,21 @@ function resolveWeather(
 
 type CoupleCtx = NonNullable<Awaited<ReturnType<typeof ensureCoupleContext>>>;
 
+// How many AI reports a non-premium couple gets before generation is gated.
+// Deliberately counted per-couple, not per-week: the reschedule endpoint
+// allows moving reportWeekday/reportHour up to 3x/7 days, which -- combined
+// with the scheduler's 30-min poll -- would otherwise let someone harvest a
+// fresh report every ~20h just by nudging the schedule, regardless of trial
+// length. An absolute count closes that off.
+const FREE_REPORT_LIMIT = 1;
+// Off by default: isPremium never becomes true today (no StoreKit wiring
+// yet), so flipping this on before subscriptions exist would permanently
+// block every couple after their first report. Read fresh (not cached at
+// module load) so it can be toggled without a server restart.
+function reportQuotaEnforced() {
+  return process.env.ENFORCE_REPORT_QUOTA === 'true';
+}
+
 // Both partners share one report, so both get notified when it's ready —
 // regardless of whether it was generated automatically or by one of them
 // tapping "Обновить".
@@ -169,6 +184,10 @@ export async function runReportGeneration(ctx: CoupleCtx) {
     return { status: 'empty' as const };
   }
 
+  if (reportQuotaEnforced() && !couple.isPremium && couple.freeReportsUsed >= FREE_REPORT_LIMIT) {
+    return { status: 'limit_reached' as const };
+  }
+
   const weekLabel = formatWindowLabel(windowStart, now);
   const previousNarrative = lastReport
     ? (JSON.parse(lastReport.reportJson) as { narrative?: string }).narrative
@@ -207,6 +226,10 @@ export async function runReportGeneration(ctx: CoupleCtx) {
   const reportedIds = [...myEntries, ...partnerEntries].map((e) => e.id);
   await db.entry.updateMany({ where: { id: { in: reportedIds } }, data: { includedInReportId: created.id } });
 
+  if (!couple.isPremium) {
+    await db.couple.update({ where: { id: couple.id }, data: { freeReportsUsed: { increment: 1 } } });
+  }
+
   return {
     status: 'ok' as const,
     id: created.id,
@@ -242,6 +265,10 @@ reportRouter.post('/generate', generateReportLimiter, async (req: AuthedRequest,
     const result = await runReportGeneration(ctx);
     if (result.status === 'empty') {
       res.status(409).json({ error: 'Добавьте хотя бы одну запись, чтобы получить отчёт' });
+      return;
+    }
+    if (result.status === 'limit_reached') {
+      res.status(402).json({ error: 'Бесплатные отчёты закончились. Оформите подписку Together Plus.' });
       return;
     }
     res.json({ id: result.id, weekId: result.generatedAt, weekLabel: result.weekLabel, generatedAt: result.generatedAt, report: result.report });

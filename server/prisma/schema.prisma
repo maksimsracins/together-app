@@ -50,6 +50,12 @@ model Couple {
   partnerActivityNotificationsEnabled Boolean  @default(false)
   createdAt                           DateTime @default(now())
 
+  // Subscription entitlement. isPremium is a placeholder until real StoreKit
+  // receipt validation is wired up -- it never becomes true today, so
+  // freeReportsUsed only matters once ENFORCE_REPORT_QUOTA is turned on.
+  isPremium      Boolean @default(false)
+  freeReportsUsed Int    @default(0)
+
   members User[]
   entries Entry[]
   reports WeeklyReport[]

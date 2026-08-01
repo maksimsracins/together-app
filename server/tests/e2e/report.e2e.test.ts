@@ -166,6 +166,59 @@ describe('POST /api/report/generate with an API key configured', () => {
   });
 });
 
+describe('free report quota (ENFORCE_REPORT_QUOTA)', () => {
+  const ORIGINAL_ENFORCE = process.env.ENFORCE_REPORT_QUOTA;
+
+  beforeEach(() => {
+    process.env.OPENAI_API_KEY = 'test-key';
+  });
+
+  afterEach(() => {
+    process.env.ENFORCE_REPORT_QUOTA = ORIGINAL_ENFORCE;
+  });
+
+  it('does not gate generation while the flag is unset (default, pre-launch behavior)', async () => {
+    delete process.env.ENFORCE_REPORT_QUOTA;
+    const alice = await signupSoloWithCouple('Alice', 'quota-flag-off');
+    await addEntry(alice.token, 'week one');
+    const first = await request(app).post('/api/report/generate').set('Authorization', `Bearer ${alice.token}`);
+    expect(first.status).toBe(200);
+
+    await addEntry(alice.token, 'week two');
+    const second = await request(app).post('/api/report/generate').set('Authorization', `Bearer ${alice.token}`);
+    expect(second.status).toBe(200);
+  });
+
+  it('blocks a non-premium couple once their free report is used', async () => {
+    process.env.ENFORCE_REPORT_QUOTA = 'true';
+    const alice = await signupSoloWithCouple('Alice', 'quota-block');
+    await addEntry(alice.token, 'week one');
+    const first = await request(app).post('/api/report/generate').set('Authorization', `Bearer ${alice.token}`);
+    expect(first.status).toBe(200);
+
+    await addEntry(alice.token, 'week two');
+    const second = await request(app).post('/api/report/generate').set('Authorization', `Bearer ${alice.token}`);
+    expect(second.status).toBe(402);
+    expect(mockGenerate).toHaveBeenCalledTimes(1);
+  });
+
+  it('never blocks a premium couple', async () => {
+    process.env.ENFORCE_REPORT_QUOTA = 'true';
+    const alice = await signupSoloWithCouple('Alice', 'quota-premium');
+    const user = await db.user.findUniqueOrThrow({ where: { id: alice.userId } });
+    await db.couple.update({ where: { id: user.coupleId! }, data: { isPremium: true } });
+
+    await addEntry(alice.token, 'week one');
+    const first = await request(app).post('/api/report/generate').set('Authorization', `Bearer ${alice.token}`);
+    expect(first.status).toBe(200);
+
+    await addEntry(alice.token, 'week two');
+    const second = await request(app).post('/api/report/generate').set('Authorization', `Bearer ${alice.token}`);
+    expect(second.status).toBe(200);
+    expect(mockGenerate).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('GET /api/report/latest', () => {
   beforeEach(() => {
     process.env.OPENAI_API_KEY = 'test-key';
