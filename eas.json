@@ -6,14 +6,19 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://together-server-production-71d1.up.railway.app",
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "test_CwvxWGGhyCnqLosYoZLRdWhukaz"
+      }
     },
     "preview": {
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://together-server-production-71d1.up.railway.app",
         "EXPO_PUBLIC_SENTRY_DSN": "https://1278a9e7368e99e583f1fe72b241986a@o4511831667507200.ingest.de.sentry.io/4511831695556688",
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_VTaogitLMHGQlIIVLyQKMnRYWHe"
       }
     },
     "production": {
@@ -21,7 +26,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://together-server-production-71d1.up.railway.app",
         "EXPO_PUBLIC_SENTRY_DSN": "https://1278a9e7368e99e583f1fe72b241986a@o4511831667507200.ingest.de.sentry.io/4511831695556688",
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_VTaogitLMHGQlIIVLyQKMnRYWHe"
       }
     }
   },
