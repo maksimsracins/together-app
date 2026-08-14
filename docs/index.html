@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Together — a little diary for the two of you</title>
+<meta name="description" content="Together helps couples capture small daily moments and turns them into a warm weekly recap — just for the two of you.">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #FBF3EC;
+    --ink: #2B2320;
+    --accent: #D96C7A;
+    --accent-ink: #ffffff;
+    --card: #ffffff;
+    --muted: rgba(43,35,32,0.7);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1C1714;
+      --ink: #F3EAE3;
+      --card: #2A211D;
+      --muted: rgba(243,234,227,0.7);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 64px 24px 96px;
+    text-align: center;
+  }
+  .mascots { font-size: 48px; margin-bottom: 8px; }
+  h1 {
+    font-size: 34px;
+    margin: 0 0 8px;
+    letter-spacing: -0.02em;
+  }
+  .tagline {
+    font-size: 18px;
+    color: var(--muted);
+    margin: 0 0 32px;
+  }
+  .lede {
+    font-size: 17px;
+    max-width: 480px;
+    margin: 0 auto 40px;
+    color: var(--muted);
+  }
+  .features {
+    display: grid;
+    gap: 12px;
+    text-align: left;
+    margin: 0 0 40px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 18px 22px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .card .emoji { font-size: 22px; line-height: 1; }
+  .card p { margin: 0; }
+  .card strong { display: block; margin-bottom: 2px; }
+  .cta {
+    display: inline-block;
+    padding: 14px 28px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 16px;
+  }
+  .foot-line {
+    margin-top: 20px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .foot-line a { color: inherit; }
+  footer {
+    margin-top: 56px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="mascots">🐻🐿️</div>
+    <h1>Together</h1>
+    <p class="tagline">A little diary for the two of you.</p>
+
+    <p class="lede">
+      Some days are big. Most are small — a coffee together, a silly text, a tired hug after work.
+      Together helps you catch those moments before they slip away, and turns them into something
+      you'll actually want to look back on. 💞
+    </p>
+
+    <div class="features">
+      <div class="card">
+        <div class="emoji">🗓️</div>
+        <p><strong>A cozy weekly recap</strong>Once a week, Together gathers what you both shared and turns it into a warm little story.</p>
+      </div>
+      <div class="card">
+        <div class="emoji">📸</div>
+        <p><strong>Unlimited moments</strong>Notes, photos, and feelings — no limits on what you keep.</p>
+      </div>
+      <div class="card">
+        <div class="emoji">💌</div>
+        <p><strong>Both sides of the story</strong>See your week through each other's eyes, side by side.</p>
+      </div>
+    </div>
+
+    <a class="cta" href="https://apps.apple.com/app/id6796836920">Get Together on the App Store</a>
+    <p class="foot-line">Need help instead? Visit our <a href="./support.html">support page</a>.</p>
+
+    <footer>Together</footer>
+  </div>
+</body>
+</html>
