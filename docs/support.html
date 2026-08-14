@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Together — Support</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #FBF3EC;
+    --ink: #2B2320;
+    --accent: #D96C7A;
+    --card: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1C1714;
+      --ink: #F3EAE3;
+      --card: #2A211D;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+  .emoji { font-size: 40px; }
+  h1 {
+    font-size: 28px;
+    margin: 8px 0 4px;
+  }
+  .sub {
+    opacity: 0.7;
+    margin: 0 0 32px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card h2 {
+    font-size: 17px;
+    margin: 0 0 8px;
+  }
+  .card p {
+    margin: 0;
+    opacity: 0.85;
+  }
+  a.button {
+    display: inline-block;
+    margin-top: 24px;
+    padding: 12px 22px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  footer {
+    margin-top: 48px;
+    font-size: 13px;
+    opacity: 0.6;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="emoji">🐻🐿️</div>
+    <h1>Together — Support</h1>
+    <p class="sub">Need help with the app? We're happy to help.</p>
+
+    <div class="card">
+      <h2>Contact us</h2>
+      <p>For any question, bug report, or feedback about Together, email us directly:</p>
+      <a class="button" href="mailto:mr.webdev.lv@gmail.com?subject=Together%20App%20Support">mr.webdev.lv@gmail.com</a>
+    </div>
+
+    <div class="card">
+      <h2>Common questions</h2>
+      <p><strong>How do I delete my account or data?</strong><br>
+      Email us at the address above with your account's email address and we'll take care of it.</p>
+    </div>
+
+    <div class="card">
+      <h2>Subscriptions</h2>
+      <p>Together Plus subscriptions are managed through your Apple ID. To cancel or manage your subscription, go to
+      <strong>Settings → [your name] → Subscriptions</strong> on your iPhone.</p>
+    </div>
+
+    <footer>Together</footer>
+  </div>
+</body>
+</html>
