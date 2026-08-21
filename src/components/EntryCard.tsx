@@ -8,12 +8,10 @@ import { Ionicons } from '@expo/vector-icons';
 
 export function EntryCard({
   entry,
-  editable = false,
   authorLabel,
   mine,
 }: {
   entry: Entry;
-  editable?: boolean;
   authorLabel?: string;
   mine?: boolean;
 }) {
@@ -22,14 +20,17 @@ export function EntryCard({
   const time = new Date(entry.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   const accent = mine === undefined ? undefined : mine ? colors.rose : colors.skyDark;
 
+  // Every entry that reaches this list is already openable -- your own to
+  // edit (until a report locks it), your partner's to read in full once a
+  // report has unlocked it. The destination screen enforces what's actually
+  // editable; here it's just "can you open it."
   return (
     <Pressable
       style={({ pressed }) => [
         styles.card,
         accent && { borderLeftWidth: 3, borderLeftColor: accent },
-        editable && pressed && { opacity: 0.8 },
+        pressed && { opacity: 0.8 },
       ]}
-      disabled={!editable}
       onPress={() => router.push({ pathname: '/entry/new', params: { id: entry.id } })}
     >
       <View style={[styles.iconWrap, mine !== undefined && { backgroundColor: mine ? colors.roseMist : colors.skyMist }]}>
@@ -63,7 +64,7 @@ export function EntryCard({
           ))}
         </View>
       </View>
-      {editable && <Ionicons name="chevron-forward" size={18} color={colors.inkMuted} style={{ marginLeft: spacing.sm, alignSelf: 'center' }} />}
+      <Ionicons name="chevron-forward" size={18} color={colors.inkMuted} style={{ marginLeft: spacing.sm, alignSelf: 'center' }} />
     </Pressable>
   );
 }

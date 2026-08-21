@@ -104,7 +104,7 @@ export default function CalendarScreen() {
     selected.author === 'partner' && selectedEntries.length === 0 && hasPartnerActivity(selected.date);
 
   const daysUntilReveal = coupleSettings
-    ? daysUntilNextReport(coupleSettings.reportWeekday, coupleSettings.reportHour)
+    ? daysUntilNextReport(coupleSettings.reportWeekday, coupleSettings.reportHour, coupleSettings.reportTimezone)
     : null;
   const revealHint =
     daysUntilReveal === null ? '' : daysUntilReveal === 0 ? 'сегодня' : `через ${daysUntilReveal} ${pluralDays(daysUntilReveal)}`;
@@ -225,7 +225,7 @@ export default function CalendarScreen() {
         </Card>
       ) : (
         selectedEntries.map((e) => (
-          <EntryCard key={e.id} entry={e} editable={selected.author === 'mine'} />
+          <EntryCard key={e.id} entry={e} mine={selected.author === 'mine'} />
         ))
       )}
     </Screen>

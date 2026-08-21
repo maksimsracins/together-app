@@ -90,10 +90,38 @@ entriesRouter.get('/partner', async (req: AuthedRequest, res) => {
 // paying the photoUri cost for every entry on every list fetch.
 entriesRouter.get('/:id', async (req: AuthedRequest, res) => {
   const entry = await db.entry.findUnique({ where: { id: req.params.id } });
-  if (!entry || entry.userId !== req.userId) {
+  if (!entry) {
     res.status(404).json({ error: 'Запись не найдена' });
     return;
   }
+
+  if (entry.userId === req.userId) {
+    res.json(serializeEntry(entry));
+    return;
+  }
+
+  // Not mine -- only visible if it's the current partner's entry and it has
+  // already surfaced in a report, same unlock rule as GET /partner (which is
+  // what the calendar uses to know this entry is safe to open in the first
+  // place).
+  const user = await db.user.findUnique({ where: { id: req.userId } });
+  const partner = user?.coupleId
+    ? await db.user.findFirst({ where: { coupleId: user.coupleId, id: { not: user.id } } })
+    : null;
+  if (!partner || entry.userId !== partner.id) {
+    res.status(404).json({ error: 'Запись не найдена' });
+    return;
+  }
+
+  const latestReport = await db.weeklyReport.findFirst({
+    where: { coupleId: user!.coupleId! },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (!latestReport || entry.createdAt > latestReport.createdAt) {
+    res.status(404).json({ error: 'Запись не найдена' });
+    return;
+  }
+
   res.json(serializeEntry(entry));
 });
 

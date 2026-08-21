@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { EmotionPicker } from '../../src/components/EmotionPicker';
 import { useAppStore } from '../../src/store/useAppStore';
+import { useAuthStore } from '../../src/store/useAuthStore';
 import { ApiError } from '../../src/services/http';
 import { getEntry } from '../../src/services/entries';
 import { EmotionKey, Entry, EntryType } from '../../src/types';
@@ -38,27 +39,40 @@ export default function NewEntry() {
   const addEntry = useAppStore((s) => s.addEntry);
   const updateEntry = useAppStore((s) => s.updateEntry);
   const deleteEntry = useAppStore((s) => s.deleteEntry);
+  const currentUser = useAuthStore((s) => s.user);
+  const partner = useAuthStore((s) => s.partner);
 
-  // The store only ever holds this week's entries, but Calendar lets you open
-  // any entry regardless of when it was written -- fall back to fetching the
-  // full list when the one we're editing isn't in that week-scoped slice.
+  // The store only ever holds this week's entries loaded once at app launch,
+  // so it can still say includedInReportId: null for an entry the background
+  // report scheduler has since locked -- whether editing is allowed has to
+  // gate on the server's current state, not that stale snapshot. It's kept
+  // only as an instant preview while the authoritative copy loads (and it
+  // never has anything for a partner's entry, which always needs the fetch).
   const storeMatch = isEditing ? storeEntries.find((e) => e.id === id) : undefined;
   const [fetchedExisting, setFetchedExisting] = useState<Entry | null>(null);
   const [resolving, setResolving] = useState(isEditing && !storeMatch);
+  // Distinct from fetchedExisting === null (which also means "not fetched
+  // yet") -- without this, a failed fetch with no store fallback used to
+  // silently render as a blank, editable "new entry" form instead of an
+  // error, which looked exactly like an empty edit screen with no text/photo.
+  const [fetchFailed, setFetchFailed] = useState(false);
 
   useEffect(() => {
-    if (!isEditing || storeMatch) {
+    if (!isEditing || !id) {
       setResolving(false);
       return;
     }
     let cancelled = false;
-    setResolving(true);
+    setFetchFailed(false);
     getEntry(id)
       .then((entry) => {
         if (!cancelled) setFetchedExisting(entry);
       })
       .catch(() => {
-        if (!cancelled) setFetchedExisting(null);
+        if (!cancelled) {
+          setFetchedExisting(null);
+          setFetchFailed(true);
+        }
       })
       .finally(() => {
         if (!cancelled) setResolving(false);
@@ -69,8 +83,12 @@ export default function NewEntry() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, id]);
 
-  const existing = storeMatch ?? fetchedExisting ?? undefined;
-  const locked = !!existing?.includedInReportId;
+  // Prefer the freshly-fetched copy once it lands -- it's the authoritative
+  // one, the store match was only ever a fast first paint.
+  const existing = fetchedExisting ?? storeMatch ?? undefined;
+  const notFound = isEditing && fetchFailed && !existing;
+  const isMine = !existing || !currentUser || existing.authorId === currentUser.id;
+  const locked = !!existing?.includedInReportId || !isMine;
 
   const [emotion, setEmotion] = useState<EmotionKey | null>(existing?.emotion ?? null);
   const [text, setText] = useState(existing?.text ?? '');
@@ -84,46 +102,67 @@ export default function NewEntry() {
   // immediately regardless of render timing.
   const savingRef = useRef(false);
 
-  // Only fires once, right when the async fallback fetch resolves -- the
-  // synchronous store-match path never needed this, its useState initializers
-  // already had the right values on first render.
+  // Fires whenever the authoritative fetch lands, whether or not a store
+  // match already painted a (possibly stale) preview.
   useEffect(() => {
-    if (!resolving && fetchedExisting) {
+    if (fetchedExisting) {
       setEmotion(fetchedExisting.emotion);
       setText(fetchedExisting.text);
       setPhotoUri(fetchedExisting.photoUri ?? null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolving]);
+  }, [fetchedExisting]);
 
   const canSave = emotion !== null && text.trim().length > 0;
 
-  const handlePickPhoto = async () => {
-    setError(null);
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
+  const applyPickedAsset = (result: ImagePicker.ImagePickerResult) => {
+    const asset = result.assets?.[0];
+    if (!result.canceled && asset?.base64) {
+      const dataUri = `data:image/jpeg;base64,${asset.base64}`;
+      if (isPhotoTooLarge(dataUri)) {
+        setError('Фото слишком большое. Попробуйте выбрать другое или сделать снимок заново.');
+      } else {
+        setPhotoUri(dataUri);
+      }
+    }
+  };
+
+  const pickFromLibrary = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
       setError('Нет доступа к галерее');
       return;
     }
     setPickingPhoto(true);
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        quality: 0.5,
-        base64: true,
-      });
-      const asset = result.assets?.[0];
-      if (!result.canceled && asset?.base64) {
-        const dataUri = `data:image/jpeg;base64,${asset.base64}`;
-        if (isPhotoTooLarge(dataUri)) {
-          setError('Фото слишком большое. Попробуйте выбрать другое или сделать снимок заново.');
-        } else {
-          setPhotoUri(dataUri);
-        }
-      }
+      applyPickedAsset(
+        await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.5, base64: true })
+      );
     } finally {
       setPickingPhoto(false);
     }
+  };
+
+  const pickFromCamera = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      setError('Нет доступа к камере');
+      return;
+    }
+    setPickingPhoto(true);
+    try {
+      applyPickedAsset(await ImagePicker.launchCameraAsync({ quality: 0.5, base64: true }));
+    } finally {
+      setPickingPhoto(false);
+    }
+  };
+
+  const handleChoosePhoto = () => {
+    setError(null);
+    Alert.alert('Фото', undefined, [
+      { text: 'Сделать фото', onPress: pickFromCamera },
+      { text: 'Выбрать из галереи', onPress: pickFromLibrary },
+      { text: 'Отмена', style: 'cancel' },
+    ]);
   };
 
   const persistEntry = async (finalText: string) => {
@@ -184,7 +223,7 @@ export default function NewEntry() {
           <Pressable onPress={() => router.back()} style={styles.closeBtn} hitSlop={10}>
             <Ionicons name="close" size={20} color={colors.ink} />
           </Pressable>
-          {isEditing && !locked && (
+          {isEditing && !locked && !notFound && (
             <Pressable onPress={handleDelete} style={[styles.closeBtn, { marginLeft: spacing.sm }]} hitSlop={10}>
               <Ionicons name="trash-outline" size={18} color={colors.danger} />
             </Pressable>
@@ -192,11 +231,11 @@ export default function NewEntry() {
         </View>
 
         <Text style={styles.title} numberOfLines={1}>
-          {locked ? 'Запись' : isEditing ? 'Изменить запись' : 'Новая запись'}
+          {notFound ? 'Запись' : !isMine ? `Запись ${partner?.name ?? 'партнёра'}` : locked ? 'Запись' : isEditing ? 'Изменить запись' : 'Новая запись'}
         </Text>
 
         <View style={[styles.headerSide, { justifyContent: 'flex-end' }]}>
-          {!locked && (
+          {!locked && !notFound && (
             <Pressable onPress={handleSave} disabled={saving} hitSlop={10}>
               {saving ? (
                 <ActivityIndicator size="small" color={colors.roseDark} />
@@ -214,6 +253,12 @@ export default function NewEntry() {
 
       {resolving ? (
         <ActivityIndicator style={{ marginTop: spacing.xxl }} color={colors.roseDark} />
+      ) : notFound ? (
+        <View style={styles.content}>
+          <Text style={styles.lockedNote}>
+            Не удалось загрузить запись — она недоступна или произошла ошибка сети. Попробуйте ещё раз.
+          </Text>
+        </View>
       ) : (
       <ScrollView
         style={{ flex: 1 }}
@@ -223,7 +268,9 @@ export default function NewEntry() {
       >
         {locked && (
           <Text style={styles.lockedNote}>
-            🔒 Эта запись уже вошла в отчёт и теперь доступна только для просмотра — изменить или удалить её нельзя
+            {!isMine
+              ? `💌 Запись ${partner?.name ?? 'партнёра'} — доступна только для просмотра`
+              : '🔒 Эта запись уже вошла в отчёт и теперь доступна только для просмотра — изменить или удалить её нельзя'}
           </Text>
         )}
 
@@ -256,7 +303,7 @@ export default function NewEntry() {
           </View>
         ) : (
           !locked && (
-            <Pressable style={styles.photoAddBtn} onPress={handlePickPhoto} disabled={pickingPhoto} hitSlop={4}>
+            <Pressable style={styles.photoAddBtn} onPress={handleChoosePhoto} disabled={pickingPhoto} hitSlop={4}>
               <Ionicons name="camera-outline" size={17} color={colors.roseDark} />
               <Text style={styles.photoAddText}>{pickingPhoto ? 'Загрузка…' : 'Добавить фото'}</Text>
             </Pressable>

@@ -187,7 +187,10 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
-  const target = reportWeekday !== null && reportHour !== null ? nextReportDate(reportWeekday, reportHour, now) : null;
+  const target =
+    reportWeekday !== null && reportHour !== null && coupleSettings
+      ? nextReportDate(reportWeekday, reportHour, coupleSettings.reportTimezone, now)
+      : null;
   const diffMs = target ? Math.max(0, target.getTime() - now.getTime()) : null;
   const days = diffMs !== null ? Math.floor(diffMs / 86400000) : null;
   const hours = diffMs !== null ? Math.floor((diffMs % 86400000) / 3600000) : null;
