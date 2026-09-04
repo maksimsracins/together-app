@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,6 +33,7 @@ const EMOTION_TO_TYPE: Record<EmotionKey, EntryType> = {
 };
 
 export default function NewEntry() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEditing = !!id;
   const storeEntries = useAppStore((s) => s.entries);
@@ -94,6 +95,7 @@ export default function NewEntry() {
   const [text, setText] = useState(existing?.text ?? '');
   const [photoUri, setPhotoUri] = useState<string | null>(existing?.photoUri ?? null);
   const [pickingPhoto, setPickingPhoto] = useState(false);
+  const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // A fast double-tap can fire the handler twice before the `saving` state
@@ -294,7 +296,9 @@ export default function NewEntry() {
 
         {photoUri ? (
           <View style={styles.photoWrap}>
-            <Image source={{ uri: photoUri }} style={styles.photo} />
+            <Pressable onPress={() => setPhotoViewerOpen(true)}>
+              <Image source={{ uri: photoUri }} style={styles.photo} />
+            </Pressable>
             {!locked && (
               <Pressable style={styles.photoRemoveBtn} onPress={() => setPhotoUri(null)} hitSlop={10}>
                 <Ionicons name="close" size={16} color={colors.white} />
@@ -319,6 +323,26 @@ export default function NewEntry() {
       </ScrollView>
       )}
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={photoViewerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPhotoViewerOpen(false)}
+      >
+        <Pressable style={styles.photoViewerBackdrop} onPress={() => setPhotoViewerOpen(false)}>
+          {photoUri && (
+            <Image source={{ uri: photoUri }} style={styles.photoViewerImage} resizeMode="contain" />
+          )}
+          <Pressable
+            style={[styles.photoViewerCloseBtn, { top: insets.top + spacing.sm }]}
+            onPress={() => setPhotoViewerOpen(false)}
+            hitSlop={10}
+          >
+            <Ionicons name="close" size={22} color={colors.white} />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -371,4 +395,12 @@ const styles = StyleSheet.create({
     padding: spacing.md, marginBottom: spacing.lg, lineHeight: 19,
   },
   disabled: { opacity: 0.5 },
+  photoViewerBackdrop: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center',
+  },
+  photoViewerImage: { width: '100%', height: '100%' },
+  photoViewerCloseBtn: {
+    position: 'absolute', right: spacing.lg, width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
+  },
 });
