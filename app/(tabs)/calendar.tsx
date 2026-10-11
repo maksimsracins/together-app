@@ -10,7 +10,6 @@ import {
   startOfWeek,
   subWeeks,
 } from 'date-fns';
-import { ru } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/components/Screen';
 import { Card } from '../../src/components/Card';
@@ -22,7 +21,8 @@ import { useAuthStore } from '../../src/store/useAuthStore';
 import { getPartnerActivity, listAllEntries } from '../../src/services/entries';
 import { Entry } from '../../src/types';
 import { colors, radius, spacing, type } from '../../src/theme';
-import { daysUntilNextReport, pluralDays } from '../../src/utils/week';
+import { daysUntilNextReport } from '../../src/utils/week';
+import { dateLocale, plural, useLang, useT } from '../../src/i18n';
 
 type Author = 'mine' | 'partner';
 interface Selection {
@@ -30,13 +30,16 @@ interface Selection {
   author: Author;
 }
 
-const WEEKDAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 function dateKey(d: Date) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
 export default function CalendarScreen() {
+  const t = useT();
+  const lang = useLang();
+  const locale = dateLocale(lang);
+  const weekdayShort = t('common.weekdaysShort').split('|');
   const partnerEntries = useAppStore((s) => s.partnerEntries);
   const partner = useAuthStore((s) => s.partner);
   const { coupleSettings } = useAppStore();
@@ -60,7 +63,7 @@ export default function CalendarScreen() {
           setMyEntries(mine);
           setPartnerActivityDates(activity.createdAts.map((iso) => new Date(iso)));
         })
-        .catch(() => setLoadError('Не удалось загрузить записи'))
+        .catch(() => setLoadError(t('calendar.loadFailed')))
         .finally(() => setLoading(false));
     }, [])
   );
@@ -107,15 +110,19 @@ export default function CalendarScreen() {
     ? daysUntilNextReport(coupleSettings.reportWeekday, coupleSettings.reportHour, coupleSettings.reportTimezone)
     : null;
   const revealHint =
-    daysUntilReveal === null ? '' : daysUntilReveal === 0 ? 'сегодня' : `через ${daysUntilReveal} ${pluralDays(daysUntilReveal)}`;
+    daysUntilReveal === null
+      ? ''
+      : daysUntilReveal === 0
+        ? t('common.today')
+        : t('calendar.inDays', { n: daysUntilReveal, days: plural('plural.inDays', daysUntilReveal, lang) });
 
-  const weekLabel = `${format(weekCursor, 'd MMM', { locale: ru })} – ${format(endOfWeek(weekCursor, { weekStartsOn: 1 }), 'd MMM', { locale: ru })}`;
+  const weekLabel = `${format(weekCursor, 'd MMM', { locale })} – ${format(endOfWeek(weekCursor, { weekStartsOn: 1 }), 'd MMM', { locale })}`;
 
   return (
     <Screen ambient>
-      <Text style={styles.title}>Календарь</Text>
+      <Text style={styles.title}>{t('tabs.calendar')}</Text>
       <Text style={styles.subtitle}>
-        {partner ? 'Выберите день и кто именно — вы или партнёр' : 'Выберите день, чтобы увидеть записи'}
+        {partner ? t('calendar.subtitlePartner') : t('calendar.subtitleSolo')}
       </Text>
 
       <Card style={{ marginTop: spacing.md }}>
@@ -134,7 +141,7 @@ export default function CalendarScreen() {
           {weekDays.map((day) => (
             <View key={day.toISOString()} style={styles.dayHeaderCell}>
               <Text style={[styles.dayHeaderWeekday, isTodayFn(day) && { color: colors.roseDark }]}>
-                {WEEKDAY_SHORT[(day.getDay() + 6) % 7]}
+                {weekdayShort[(day.getDay() + 6) % 7]}
               </Text>
               <Text style={[styles.dayHeaderDate, isTodayFn(day) && { color: colors.roseDark }]}>
                 {format(day, 'd')}
@@ -145,7 +152,7 @@ export default function CalendarScreen() {
 
         <View style={styles.gridRow}>
           <View style={styles.rowLabelCell}>
-            <Text style={[styles.rowLabelText, { color: colors.roseDark }]}>Я</Text>
+            <Text style={[styles.rowLabelText, { color: colors.roseDark }]}>{t('common.me')}</Text>
           </View>
           {weekDays.map((day) => {
             const active = selected.author === 'mine' && isSameDay(day, selected.date);
@@ -198,9 +205,11 @@ export default function CalendarScreen() {
       </Card>
 
       <Text style={styles.selectedLabel}>
-        {selected.author === 'mine' ? 'Ваши записи' : `Записи ${partner?.name ?? 'партнёра'}`}
+        {selected.author === 'mine'
+          ? t('calendar.myEntries')
+          : t('calendar.partnerEntries', { name: partner?.name ?? t('common.partnerFallback') })}
         {' — '}
-        {isTodayFn(selected.date) ? 'сегодня' : format(selected.date, 'd MMMM', { locale: ru })}
+        {isTodayFn(selected.date) ? t('common.today') : format(selected.date, 'd MMMM', { locale })}
       </Text>
 
       {loading ? (
@@ -216,11 +225,13 @@ export default function CalendarScreen() {
           )}
           <Text style={styles.emptyText}>
             {partnerActivityHiddenOnSelected
-              ? `Партнёр кое-что добавил(а) — откроется${revealHint ? ` ${revealHint}` : ''}`
-              : 'Записей за этот день нет'}
+              ? revealHint
+                ? t('calendar.partnerAdded', { when: revealHint })
+                : t('calendar.partnerAddedNoDate')
+              : t('calendar.noEntries')}
           </Text>
           {selected.author === 'mine' && isTodayFn(selected.date) && (
-            <Button label="Добавить запись" onPress={() => router.push('/entry/new')} style={{ marginTop: spacing.lg }} />
+            <Button label={t('calendar.addEntry')} onPress={() => router.push('/entry/new')} style={{ marginTop: spacing.lg }} />
           )}
         </Card>
       ) : (

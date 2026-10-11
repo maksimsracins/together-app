@@ -13,6 +13,7 @@ import { getEntry } from '../../src/services/entries';
 import { EmotionKey, Entry, EntryType } from '../../src/types';
 import { colors, radius, spacing, type } from '../../src/theme';
 import { isPhotoTooLarge } from '../../src/utils/photo';
+import { useT } from '../../src/i18n';
 
 const MAX_LEN = 1000;
 
@@ -33,6 +34,7 @@ const EMOTION_TO_TYPE: Record<EmotionKey, EntryType> = {
 };
 
 export default function NewEntry() {
+  const t = useT();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEditing = !!id;
@@ -121,7 +123,7 @@ export default function NewEntry() {
     if (!result.canceled && asset?.base64) {
       const dataUri = `data:image/jpeg;base64,${asset.base64}`;
       if (isPhotoTooLarge(dataUri)) {
-        setError('Фото слишком большое. Попробуйте выбрать другое или сделать снимок заново.');
+        setError(t('entry.photoTooLarge'));
       } else {
         setPhotoUri(dataUri);
       }
@@ -131,7 +133,7 @@ export default function NewEntry() {
   const pickFromLibrary = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      setError('Нет доступа к галерее');
+      setError(t('entry.noLibrary'));
       return;
     }
     setPickingPhoto(true);
@@ -147,7 +149,7 @@ export default function NewEntry() {
   const pickFromCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      setError('Нет доступа к камере');
+      setError(t('entry.noCamera'));
       return;
     }
     setPickingPhoto(true);
@@ -160,10 +162,10 @@ export default function NewEntry() {
 
   const handleChoosePhoto = () => {
     setError(null);
-    Alert.alert('Фото', undefined, [
-      { text: 'Сделать фото', onPress: pickFromCamera },
-      { text: 'Выбрать из галереи', onPress: pickFromLibrary },
-      { text: 'Отмена', style: 'cancel' },
+    Alert.alert(t('photo.title'), undefined, [
+      { text: t('photo.take'), onPress: pickFromCamera },
+      { text: t('photo.choose'), onPress: pickFromLibrary },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -182,7 +184,7 @@ export default function NewEntry() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       router.back();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось сохранить запись');
+      setError(err instanceof ApiError ? err.message : t('entry.saveFailed'));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -191,11 +193,11 @@ export default function NewEntry() {
 
   const handleSave = async () => {
     if (!emotion) {
-      setError('Выберите эмоцию');
+      setError(t('entry.pickEmotion'));
       return;
     }
     if (!text.trim()) {
-      setError('Добавьте текст записи');
+      setError(t('entry.addText'));
       return;
     }
     setError(null);
@@ -211,7 +213,7 @@ export default function NewEntry() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
       router.back();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось удалить запись');
+      setError(err instanceof ApiError ? err.message : t('entry.deleteFailed'));
       savingRef.current = false;
       setSaving(false);
     }
@@ -233,7 +235,15 @@ export default function NewEntry() {
         </View>
 
         <Text style={styles.title} numberOfLines={1}>
-          {notFound ? 'Запись' : !isMine ? `Запись ${partner?.name ?? 'партнёра'}` : locked ? 'Запись' : isEditing ? 'Изменить запись' : 'Новая запись'}
+          {notFound
+            ? t('entry.title')
+            : !isMine
+              ? t('entry.partnerTitle', { name: partner?.name ?? t('common.partnerFallback') })
+              : locked
+                ? t('entry.title')
+                : isEditing
+                  ? t('entry.editTitle')
+                  : t('entry.newTitle')}
         </Text>
 
         <View style={[styles.headerSide, { justifyContent: 'flex-end' }]}>
@@ -243,7 +253,7 @@ export default function NewEntry() {
                 <ActivityIndicator size="small" color={colors.roseDark} />
               ) : (
                 <Text style={[styles.saveText, !canSave && styles.saveTextDisabled]}>
-                  {isEditing ? 'Сохранить' : 'Создать'}
+                  {isEditing ? t('common.save') : t('entry.create')}
                 </Text>
               )}
             </Pressable>
@@ -258,7 +268,7 @@ export default function NewEntry() {
       ) : notFound ? (
         <View style={styles.content}>
           <Text style={styles.lockedNote}>
-            Не удалось загрузить запись — она недоступна или произошла ошибка сети. Попробуйте ещё раз.
+            {t('entry.loadFailed')}
           </Text>
         </View>
       ) : (
@@ -271,8 +281,8 @@ export default function NewEntry() {
         {locked && (
           <Text style={styles.lockedNote}>
             {!isMine
-              ? `💌 Запись ${partner?.name ?? 'партнёра'} — доступна только для просмотра`
-              : '🔒 Эта запись уже вошла в отчёт и теперь доступна только для просмотра — изменить или удалить её нельзя'}
+              ? t('entry.partnerReadOnly', { name: partner?.name ?? t('common.partnerFallback') })
+              : t('entry.lockedReadOnly')}
           </Text>
         )}
 
@@ -282,7 +292,7 @@ export default function NewEntry() {
             editable={!locked}
             autoFocus={!isEditing && !locked}
             maxLength={MAX_LEN}
-            placeholder="Расскажите, что вы чувствуете…"
+            placeholder={t('entry.placeholder')}
             placeholderTextColor={colors.inkMuted}
             value={text}
             onChangeText={setText}
@@ -292,7 +302,7 @@ export default function NewEntry() {
           {!locked && <Text style={styles.counter}>{text.length}/{MAX_LEN}</Text>}
         </View>
 
-        {!locked && <Text style={styles.privacyNote}>🔒 Увидите только вы — до недельного отчёта</Text>}
+        {!locked && <Text style={styles.privacyNote}>{t('entry.privacyNote')}</Text>}
 
         {photoUri ? (
           <View style={styles.photoWrap}>
@@ -309,13 +319,13 @@ export default function NewEntry() {
           !locked && (
             <Pressable style={styles.photoAddBtn} onPress={handleChoosePhoto} disabled={pickingPhoto} hitSlop={4}>
               <Ionicons name="camera-outline" size={17} color={colors.roseDark} />
-              <Text style={styles.photoAddText}>{pickingPhoto ? 'Загрузка…' : 'Добавить фото'}</Text>
+              <Text style={styles.photoAddText}>{pickingPhoto ? t('entry.loading') : t('entry.addPhoto')}</Text>
             </Pressable>
           )
         )}
 
         <View style={styles.tagSection}>
-          <Text style={styles.label}>Эмоция</Text>
+          <Text style={styles.label}>{t('entry.emotion')}</Text>
           <View pointerEvents={locked ? 'none' : 'auto'} style={locked && styles.disabled}>
             <EmotionPicker value={emotion} onChange={setEmotion} />
           </View>

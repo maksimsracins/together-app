@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { AuthedRequest, requireAuth } from '../auth';
 import { serializeUser, serializeEntry, serializeNotification } from '../serializers';
+import { isLang, langOf, normalizeLang, t } from '../i18n';
 
 export const usersRouter = Router();
 
@@ -9,11 +10,27 @@ usersRouter.use(requireAuth);
 
 const MAX_AVATAR_DATA_URI_LENGTH = 5 * 1024 * 1024; // ~3.5MB of actual image data, base64-inflated
 const MAX_NAME_LENGTH = 20;
+const LANGUAGE_CHANGE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+// Builds from before multi-language support still send love languages as
+// their Russian display labels -- store everything as the stable keys the
+// current client translates at render time.
+const LEGACY_LOVE_LANGUAGE_KEYS: Record<string, string> = {
+  'Слова поддержки': 'words',
+  'Совместное время': 'time',
+  'Подарки': 'gifts',
+  'Помощь по дому': 'service',
+  'Прикосновения': 'touch',
+};
+
+function normalizeLoveLanguages(values: string[]) {
+  return values.map((v) => LEGACY_LOVE_LANGUAGE_KEYS[v] ?? v);
+}
 
 usersRouter.get('/me', async (req: AuthedRequest, res) => {
   const user = await db.user.findUnique({ where: { id: req.userId } });
   if (!user) {
-    res.status(404).json({ error: 'User not found' });
+    res.status(404).json({ error: t(langOf(req), 'userNotFound') });
     return;
   }
   res.json(serializeUser(user));
@@ -27,6 +44,7 @@ interface UpdateProfileBody {
   loveLanguages?: string[];
   interests?: string[];
   timezone?: string;
+  language?: string;
   birthdate?: string | null;
   occupation?: string | null;
   habits?: string | null;
@@ -36,19 +54,44 @@ interface UpdateProfileBody {
 
 usersRouter.patch('/me', async (req: AuthedRequest, res) => {
   const body = req.body as UpdateProfileBody;
+  const lang = langOf(req);
 
   if (body.name !== undefined && body.name.trim().length > MAX_NAME_LENGTH) {
-    res.status(400).json({ error: `Имя не может быть длиннее ${MAX_NAME_LENGTH} символов` });
+    res.status(400).json({ error: t(lang, 'nameTooLong', { max: MAX_NAME_LENGTH }) });
     return;
   }
 
   if (body.avatarUri) {
     if (!body.avatarUri.startsWith('data:image/')) {
-      res.status(400).json({ error: 'Некорректный формат фото' });
+      res.status(400).json({ error: t(lang, 'invalidPhotoFormat') });
       return;
     }
     if (body.avatarUri.length > MAX_AVATAR_DATA_URI_LENGTH) {
-      res.status(400).json({ error: 'Фото слишком большое' });
+      res.status(400).json({ error: t(lang, 'photoTooLarge') });
+      return;
+    }
+  }
+
+  if (body.language !== undefined && !isLang(body.language)) {
+    res.status(400).json({ error: t(lang, 'unsupportedLanguage') });
+    return;
+  }
+
+  // Switching language translates every past report the user opens, so it is
+  // limited to once a day.
+  let languageChanged = false;
+  if (body.language !== undefined) {
+    const current = await db.user.findUnique({
+      where: { id: req.userId },
+      select: { language: true, languageChangedAt: true },
+    });
+    languageChanged = !!current && current.language !== body.language;
+    if (
+      languageChanged &&
+      current?.languageChangedAt &&
+      Date.now() - current.languageChangedAt.getTime() < LANGUAGE_CHANGE_COOLDOWN_MS
+    ) {
+      res.status(429).json({ error: t(lang, 'languageChangeLimit') });
       return;
     }
   }
@@ -62,9 +105,12 @@ usersRouter.patch('/me', async (req: AuthedRequest, res) => {
       ...(body.relationshipStartDate !== undefined && {
         relationshipStartDate: body.relationshipStartDate ? new Date(body.relationshipStartDate) : null,
       }),
-      ...(body.loveLanguages !== undefined && { loveLanguages: JSON.stringify(body.loveLanguages) }),
+      ...(body.loveLanguages !== undefined && {
+        loveLanguages: JSON.stringify(normalizeLoveLanguages(body.loveLanguages)),
+      }),
       ...(body.interests !== undefined && { interests: JSON.stringify(body.interests) }),
       ...(body.timezone !== undefined && { timezone: body.timezone }),
+      ...(languageChanged && { language: body.language, languageChangedAt: new Date() }),
       ...(body.birthdate !== undefined && { birthdate: body.birthdate ? new Date(body.birthdate) : null }),
       ...(body.occupation !== undefined && { occupation: body.occupation }),
       ...(body.habits !== undefined && { habits: body.habits }),
@@ -106,7 +152,7 @@ usersRouter.get('/me/partner', async (req: AuthedRequest, res) => {
 usersRouter.get('/me/export', async (req: AuthedRequest, res) => {
   const user = await db.user.findUnique({ where: { id: req.userId } });
   if (!user) {
-    res.status(404).json({ error: 'Пользователь не найден' });
+    res.status(404).json({ error: t(langOf(req), 'userNotFound') });
     return;
   }
 
@@ -139,7 +185,7 @@ usersRouter.get('/me/export', async (req: AuthedRequest, res) => {
 usersRouter.delete('/me', async (req: AuthedRequest, res) => {
   const user = await db.user.findUnique({ where: { id: req.userId } });
   if (!user) {
-    res.status(404).json({ error: 'Пользователь не найден' });
+    res.status(404).json({ error: t(langOf(req), 'userNotFound') });
     return;
   }
 
@@ -158,7 +204,7 @@ usersRouter.delete('/me', async (req: AuthedRequest, res) => {
             data: {
               userId: partner.id,
               type: 'partner_left',
-              message: `${user.name} удалил(а) свой аккаунт в Together. Ваша пара расторгнута.`,
+              message: t(normalizeLang(partner.language), 'notifPartnerDeletedAccount', { name: user.name }),
             },
           }),
         ]

@@ -5,6 +5,7 @@ import { Entry } from '../types';
 import { emotionMeta, entryTypeMeta } from '../data/catalog';
 import { colors, radius, spacing, type } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
+import { intlLocale } from '../i18n';
 
 export function EntryCard({
   entry,
@@ -17,7 +18,7 @@ export function EntryCard({
 }) {
   const typeMeta = entryTypeMeta(entry.type);
   const emo = emotionMeta(entry.emotion);
-  const time = new Date(entry.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const time = new Date(entry.createdAt).toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' });
   const accent = mine === undefined ? undefined : mine ? colors.rose : colors.skyDark;
 
   // Every entry that reaches this list is already openable -- your own to

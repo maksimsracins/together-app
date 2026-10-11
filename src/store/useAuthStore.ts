@@ -8,6 +8,7 @@ import { useAppStore } from './useAppStore';
 import { useNotificationsStore } from './useNotificationsStore';
 import { usePremiumStore } from './usePremiumStore';
 import { identifyPurchaser, logOutPurchaser } from '../services/purchases';
+import { useLanguageStore } from '../i18n';
 
 type Status = 'bootstrapping' | 'guest' | 'authed';
 
@@ -129,3 +130,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     usePremiumStore.getState().reset();
   },
 }));
+
+// The account's language wins over whatever this device last used.
+useAuthStore.subscribe((state, prev) => {
+  if (state.user && state.user.language !== prev.user?.language) {
+    useLanguageStore.getState().setLang(state.user.language);
+  }
+});

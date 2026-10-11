@@ -16,16 +16,9 @@ import { registerPushToken } from '../../src/services/users';
 import { ApiError } from '../../src/services/http';
 import { colors, fonts, radius, shadow, spacing, type } from '../../src/theme';
 import { greeting, nextReportDate } from '../../src/utils/week';
+import { plural, t, useLang, useT } from '../../src/i18n';
 
-const WEEKDAY_OPTIONS = [
-  { value: 1, label: 'Пн' },
-  { value: 2, label: 'Вт' },
-  { value: 3, label: 'Ср' },
-  { value: 4, label: 'Чт' },
-  { value: 5, label: 'Пт' },
-  { value: 6, label: 'Сб' },
-  { value: 7, label: 'Вс' },
-];
+const WEEKDAY_VALUES = [1, 2, 3, 4, 5, 6, 7];
 const HOUR_OPTIONS = [8, 9, 12, 18, 20, 21];
 
 // Shared by both notification switches — each just needs a registered push
@@ -33,7 +26,7 @@ const HOUR_OPTIONS = [8, 9, 12, 18, 20, 21];
 async function ensurePushRegistered(): Promise<{ ok: true } | { ok: false; error: string }> {
   const { status: existing } = await Notifications.getPermissionsAsync();
   const granted = existing === 'granted' ? true : (await Notifications.requestPermissionsAsync()).status === 'granted';
-  if (!granted) return { ok: false, error: 'Разрешение на уведомления не получено' };
+  if (!granted) return { ok: false, error: t('home.notifPermissionDenied') };
 
   const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
   const token = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
@@ -55,6 +48,9 @@ function TimerSegment({ value, label, last }: { value: string; label: string; la
 }
 
 export default function Home() {
+  const tr = useT();
+  const lang = useLang();
+  const weekdayShort = tr('common.weekdaysShort').split('|');
   const user = useAuthStore((s) => s.user)!;
   const partner = useAuthStore((s) => s.partner);
   const updateProfile = useAuthStore((s) => s.updateProfile);
@@ -106,7 +102,7 @@ export default function Home() {
       await updateCoupleSettings({ reportWeekday: day, reportTimezone: timezone });
     } catch (err) {
       setReportWeekday(previous);
-      setScheduleError(err instanceof ApiError ? err.message : 'Не удалось изменить день отчёта');
+      setScheduleError(err instanceof ApiError ? err.message : tr('home.dayChangeFailed'));
     } finally {
       setSavingSchedule(false);
     }
@@ -122,7 +118,7 @@ export default function Home() {
       await updateCoupleSettings({ reportHour: hour, reportTimezone: timezone });
     } catch (err) {
       setReportHour(previous);
-      setScheduleError(err instanceof ApiError ? err.message : 'Не удалось изменить время отчёта');
+      setScheduleError(err instanceof ApiError ? err.message : tr('home.timeChangeFailed'));
     } finally {
       setSavingSchedule(false);
     }
@@ -147,7 +143,7 @@ export default function Home() {
       await updateCoupleSettings({ notificationsEnabled: true });
       setNotificationsEnabled(true);
     } catch {
-      setNotificationsError('Не удалось включить уведомления. Попробуйте позже.');
+      setNotificationsError(tr('home.notifEnableFailed'));
     } finally {
       setSavingNotifications(false);
     }
@@ -172,7 +168,7 @@ export default function Home() {
       await updateCoupleSettings({ partnerActivityNotificationsEnabled: true });
       setPartnerActivityEnabled(true);
     } catch {
-      setNotificationsError('Не удалось включить уведомления. Попробуйте позже.');
+      setNotificationsError(tr('home.notifEnableFailed'));
     } finally {
       setSavingPartnerActivity(false);
     }
@@ -205,7 +201,7 @@ export default function Home() {
           <Text style={styles.greeting}>
             {g.text}, {user.name} {g.emoji}
           </Text>
-          <Text style={styles.subGreeting}>Как хорошо, что вы здесь</Text>
+          <Text style={styles.subGreeting}>{tr('home.subGreeting')}</Text>
         </View>
         <Pressable onPress={() => router.push('/notifications')} hitSlop={8} style={styles.bellBtn}>
           <Ionicons name="notifications-outline" size={22} color={colors.ink} />
@@ -228,7 +224,7 @@ export default function Home() {
               </View>
             )}
           </Pressable>
-          <Text style={styles.coupleName} numberOfLines={1}>{partner?.name ?? 'Пригласить'}</Text>
+          <Text style={styles.coupleName} numberOfLines={1}>{partner?.name ?? tr('home.invite')}</Text>
         </View>
 
         <Text style={styles.coupleHeart}>💞</Text>
@@ -245,7 +241,7 @@ export default function Home() {
         <View style={styles.countdownHeaderRow}>
           <Ionicons name="heart" size={14} color={colors.rose} />
           <Text style={[styles.countdownLabel, { flex: 1 }]}>
-            {partner ? `Скоро откроются события ${partner.name}` : 'До следующего отчёта'}
+            {partner ? tr('home.partnerSoon', { name: partner.name }) : tr('home.untilNext')}
           </Text>
           <Pressable onPress={() => setSettingsVisible(true)} hitSlop={8}>
             <Ionicons name="settings-outline" size={16} color={colors.sageDark} />
@@ -257,10 +253,10 @@ export default function Home() {
             <Text style={styles.countdownEmpty}>—</Text>
           ) : (
             <>
-              <TimerSegment value={String(days)} label={days === 1 ? 'день' : 'дней'} />
-              <TimerSegment value={pad(hours!)} label="часов" />
-              <TimerSegment value={pad(minutes!)} label="минут" />
-              <TimerSegment value={pad(seconds!)} label="секунд" last />
+              <TimerSegment value={String(days)} label={plural('plural.days', days!, lang)} />
+              <TimerSegment value={pad(hours!)} label={tr('home.hours')} />
+              <TimerSegment value={pad(minutes!)} label={tr('home.minutes')} />
+              <TimerSegment value={pad(seconds!)} label={tr('home.seconds')} last />
             </>
           )}
         </View>
@@ -282,13 +278,13 @@ export default function Home() {
           />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.reportTitle}>Ваша история недели</Text>
+          <Text style={styles.reportTitle}>{tr('home.reportTitle')}</Text>
           <Text style={[styles.reportHint, weeklyReport && styles.reportHintReady]}>
             {reportLocked
-              ? 'Оформите Together Plus, чтобы получить отчёт'
+              ? tr('home.reportPaywall')
               : weeklyReport
-                ? 'Готово — можно прочитать 💌'
-                : 'Появится по расписанию отчёта'}
+                ? tr('home.reportReady')
+                : tr('home.reportScheduled')}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={weeklyReport ? colors.roseDark : colors.inkMuted} />
@@ -300,7 +296,7 @@ export default function Home() {
         <View style={styles.ctaCircle}>
           <Ionicons name="add" size={30} color={colors.white} />
         </View>
-        <Text style={styles.ctaLabel}>Поделиться эмоцией</Text>
+        <Text style={styles.ctaLabel}>{tr('home.share')}</Text>
       </Pressable>
       </Screen>
 
@@ -317,16 +313,16 @@ export default function Home() {
               <Pressable onPress={() => setSettingsVisible(false)} style={styles.pickerCloseBtn} hitSlop={10}>
                 <Ionicons name="close" size={20} color={colors.ink} />
               </Pressable>
-              <Text style={styles.pickerSheetTitle}>Настройки отчёта</Text>
+              <Text style={styles.pickerSheetTitle}>{tr('home.settingsTitle')}</Text>
               <View style={[styles.pickerCloseBtn, { backgroundColor: 'transparent' }]} />
             </View>
 
-            <Text style={styles.settingLabel}>День отчёта</Text>
+            <Text style={styles.settingLabel}>{tr('home.reportDay')}</Text>
             {reportWeekday === null ? (
               <ActivityIndicator style={{ marginVertical: spacing.lg }} color={colors.roseDark} />
             ) : (
               <View style={styles.weekdayRow}>
-                {WEEKDAY_OPTIONS.map((opt) => (
+                {WEEKDAY_VALUES.map((value) => ({ value, label: weekdayShort[value - 1] })).map((opt) => (
                   <Pressable
                     key={opt.value}
                     onPress={() => handlePickWeekday(opt.value)}
@@ -341,7 +337,7 @@ export default function Home() {
               </View>
             )}
 
-            <Text style={styles.settingLabel}>Время отчёта</Text>
+            <Text style={styles.settingLabel}>{tr('home.reportTime')}</Text>
             {reportHour === null ? (
               <ActivityIndicator style={{ marginVertical: spacing.lg }} color={colors.roseDark} />
             ) : (
@@ -361,12 +357,12 @@ export default function Home() {
               </View>
             )}
             {scheduleError && <Text style={styles.notifyError}>⚠️ {scheduleError}</Text>}
-            <Text style={styles.settingHint}>Менять день и время можно не чаще 3 раз в неделю</Text>
+            <Text style={styles.settingHint}>{tr('home.scheduleHint')}</Text>
 
             <View style={styles.notifyRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.settingLabel}>Уведомление о новом отчёте</Text>
-                <Text style={styles.settingHint}>Придёт на телефон, когда отчёт будет готов</Text>
+                <Text style={styles.settingLabel}>{tr('home.reportNotif')}</Text>
+                <Text style={styles.settingHint}>{tr('home.reportNotifHint')}</Text>
               </View>
               {savingNotifications ? (
                 <ActivityIndicator color={colors.roseDark} />
@@ -381,8 +377,8 @@ export default function Home() {
 
             <View style={styles.notifyRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.settingLabel}>Партнёр поделился</Text>
-                <Text style={styles.settingHint}>Уведомление, когда партнёр добавил запись (без деталей)</Text>
+                <Text style={styles.settingLabel}>{tr('home.partnerNotif')}</Text>
+                <Text style={styles.settingHint}>{tr('home.partnerNotifHint')}</Text>
               </View>
               {savingPartnerActivity ? (
                 <ActivityIndicator color={colors.roseDark} />
@@ -398,8 +394,8 @@ export default function Home() {
 
             <View style={styles.notifyRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.settingLabel}>Напоминание вести дневник</Text>
-                <Text style={styles.settingHint}>Если вы не добавляли записи — напомним за день до отчёта</Text>
+                <Text style={styles.settingLabel}>{tr('home.journalReminder')}</Text>
+                <Text style={styles.settingHint}>{tr('home.journalReminderHint')}</Text>
               </View>
               <Switch
                 value={journalReminderEnabled}

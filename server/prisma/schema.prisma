@@ -11,26 +11,28 @@ datasource db {
 }
 
 model User {
-  id                    String    @id @default(cuid())
-  email                 String    @unique
-  passwordHash          String?
-  appleId               String?   @unique
-  googleId              String?   @unique
-  name                  String
-  avatarEmoji           String    @default("🌸")
-  avatarUri             String?
-  relationshipStartDate DateTime?
-  loveLanguages         String    @default("[]")
-  interests             String    @default("[]")
-  timezone              String    @default("UTC")
-  pushToken             String?
-  birthdate             DateTime?
-  occupation            String?
-  habits                String?
-  city                  String?
-  journalReminderEnabled  Boolean   @default(true)
+  id                        String    @id @default(cuid())
+  email                     String    @unique
+  passwordHash              String?
+  appleId                   String?   @unique
+  googleId                  String?   @unique
+  name                      String
+  avatarEmoji               String    @default("🌸")
+  avatarUri                 String?
+  relationshipStartDate     DateTime?
+  loveLanguages             String    @default("[]")
+  interests                 String    @default("[]")
+  timezone                  String    @default("UTC")
+  language                  String    @default("en")
+  languageChangedAt         DateTime?
+  pushToken                 String?
+  birthdate                 DateTime?
+  occupation                String?
+  habits                    String?
+  city                      String?
+  journalReminderEnabled    Boolean   @default(true)
   lastJournalReminderSentAt DateTime?
-  createdAt             DateTime  @default(now())
+  createdAt                 DateTime  @default(now())
 
   coupleId String?
   couple   Couple? @relation(fields: [coupleId], references: [id])
@@ -53,8 +55,8 @@ model Couple {
   // Subscription entitlement. isPremium is a placeholder until real StoreKit
   // receipt validation is wired up -- it never becomes true today, so
   // freeReportsUsed only matters once ENFORCE_REPORT_QUOTA is turned on.
-  isPremium      Boolean @default(false)
-  freeReportsUsed Int    @default(0)
+  isPremium       Boolean @default(false)
+  freeReportsUsed Int     @default(0)
 
   members User[]
   entries Entry[]
@@ -105,11 +107,29 @@ model WeeklyReport {
   weekId     String
   weekLabel  String
   reportJson String
+  // Language the report was generated in; a partner reading in another
+  // language gets a cached ReportTranslation instead.
+  language   String   @default("ru")
   createdAt  DateTime @default(now())
 
-  coupleId String
-  couple   Couple @relation(fields: [coupleId], references: [id])
-  entries  Entry[]
+  coupleId     String
+  couple       Couple              @relation(fields: [coupleId], references: [id])
+  entries      Entry[]
+  translations ReportTranslation[]
 
   @@index([coupleId])
+}
+
+model ReportTranslation {
+  id         String   @id @default(cuid())
+  language   String
+  // The translated text fields of WeeklyReport.reportJson (narrative,
+  // insight, appreciationHighlight, loveMapNote).
+  reportJson String
+  createdAt  DateTime @default(now())
+
+  reportId String
+  report   WeeklyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, language])
 }

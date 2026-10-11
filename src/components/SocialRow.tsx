@@ -6,13 +6,15 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuthStore } from '../store/useAuthStore';
 import { ApiError } from '../services/http';
 import { colors, radius, spacing, type } from '../theme';
+import { useT } from '../i18n';
 
 export function SocialRow() {
+  const t = useT();
   const loginWithApple = useAuthStore((s) => s.loginWithApple);
   const [appleLoading, setAppleLoading] = useState(false);
   const appleLoadingRef = useRef(false);
 
-  const comingSoon = () => Alert.alert('Скоро', 'Вход через соцсети появится в одном из следующих обновлений.');
+  const comingSoon = () => Alert.alert(t('social.soonTitle'), t('social.soonBody'));
 
   const handleApple = async () => {
     if (Platform.OS !== 'ios') {
@@ -30,7 +32,7 @@ export function SocialRow() {
         ],
       });
       if (!credential.identityToken) {
-        Alert.alert('Не удалось войти', 'Apple не передал данные для входа. Попробуйте ещё раз.');
+        Alert.alert(t('social.failedTitle'), t('social.appleNoData'));
         return;
       }
       const fullName = credential.fullName
@@ -41,7 +43,7 @@ export function SocialRow() {
       router.replace(user?.coupleId ? '/(tabs)' : '/(auth)/couple');
     } catch (e: any) {
       if (e?.code !== 'ERR_REQUEST_CANCELED') {
-        Alert.alert('Не удалось войти', e instanceof ApiError ? e.message : 'Проверьте соединение и попробуйте снова.');
+        Alert.alert(t('social.failedTitle'), e instanceof ApiError ? e.message : t('common.checkConnection'));
       }
     } finally {
       appleLoadingRef.current = false;
@@ -53,7 +55,7 @@ export function SocialRow() {
     <View style={styles.wrap}>
       <View style={styles.dividerRow}>
         <View style={styles.line} />
-        <Text style={styles.or}>или продолжить с</Text>
+        <Text style={styles.or}>{t('social.or')}</Text>
         <View style={styles.line} />
       </View>
       <View style={styles.row}>

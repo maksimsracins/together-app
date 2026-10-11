@@ -7,10 +7,12 @@ import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useAppStore } from '../../src/store/useAppStore';
 import { useNotificationsStore } from '../../src/store/useNotificationsStore';
+import { useT } from '../../src/i18n';
 
 const PARTNER_POLL_INTERVAL_MS = 6000;
 
 export default function TabsLayout() {
+  const t = useT();
   const authStatus = useAuthStore((s) => s.status);
   const user = useAuthStore((s) => s.user);
   const partner = useAuthStore((s) => s.partner);
@@ -71,7 +73,7 @@ export default function TabsLayout() {
   useEffect(() => {
     if (!previousPartnerRef.current && partner) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      Alert.alert('Партнёр присоединился! 💞', `${partner.name} теперь с вами в Together.`);
+      Alert.alert(t('tabs.partnerJoinedTitle'), t('tabs.partnerJoinedBody', { name: partner.name }));
     }
     previousPartnerRef.current = partner;
   }, [partner]);
@@ -105,21 +107,21 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Главная',
+          title: t('tabs.home'),
           tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="calendar"
         options={{
-          title: 'Календарь',
+          title: t('tabs.calendar'),
           tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Профиль',
+          title: t('tabs.profile'),
           tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
         }}
       />

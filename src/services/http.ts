@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import { currentLang } from '../i18n';
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -48,7 +49,8 @@ export async function api<T>(
   options: { method?: string; body?: unknown; auth?: boolean } = {}
 ): Promise<T> {
   const { method = 'GET', body, auth = true } = options;
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  // Server error messages and notifications follow the app's language.
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-App-Language': currentLang() };
 
   if (auth) {
     const token = await getToken();

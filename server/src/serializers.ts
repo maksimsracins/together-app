@@ -11,6 +11,7 @@ export function serializeUser(user: User) {
     loveLanguages: JSON.parse(user.loveLanguages) as string[],
     interests: JSON.parse(user.interests) as string[],
     timezone: user.timezone,
+    language: user.language,
     birthdate: user.birthdate?.toISOString().slice(0, 10) ?? null,
     occupation: user.occupation,
     habits: user.habits,

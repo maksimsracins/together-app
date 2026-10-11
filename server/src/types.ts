@@ -1,3 +1,5 @@
+import { Lang } from './i18n';
+
 export type EntryType = 'worry' | 'joy' | 'gratitude' | 'wish' | 'thought';
 
 export type EmotionKey =
@@ -26,6 +28,7 @@ export interface ProfileContext {
 }
 
 export interface GenerateReportRequest {
+  language: Lang;
   weekLabel: string;
   userAName: string;
   userBName: string;

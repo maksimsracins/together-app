@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { AuthedRequest, requireAuth } from '../auth';
 import { serializeNotification } from '../serializers';
+import { langOf, t } from '../i18n';
 
 export const notificationsRouter = Router();
 
@@ -27,7 +28,7 @@ notificationsRouter.post('/read-all', async (req: AuthedRequest, res) => {
 notificationsRouter.delete('/:id', async (req: AuthedRequest, res) => {
   const notification = await db.notification.findUnique({ where: { id: req.params.id } });
   if (!notification || notification.userId !== req.userId) {
-    res.status(404).json({ error: 'Уведомление не найдено' });
+    res.status(404).json({ error: t(langOf(req), 'notificationNotFound') });
     return;
   }
   await db.notification.delete({ where: { id: notification.id } });

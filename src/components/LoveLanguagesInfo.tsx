@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LOVE_LANGUAGE_INFO } from '../data/catalog';
+import { loveLanguageInfo } from '../data/catalog';
 import { colors, radius, spacing, type } from '../theme';
+import { useT } from '../i18n';
 
 export function LoveLanguagesInfoButton() {
+  const t = useT();
   const [visible, setVisible] = useState(false);
 
   return (
@@ -18,20 +20,17 @@ export function LoveLanguagesInfoButton() {
           <Pressable style={styles.backdrop} onPress={() => setVisible(false)} />
           <View style={styles.sheet}>
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>Что такое языки любви?</Text>
+              <Text style={styles.headerTitle}>{t('loveInfo.title')}</Text>
               <Pressable onPress={() => setVisible(false)} hitSlop={8}>
-                <Text style={styles.done}>Готово</Text>
+                <Text style={styles.done}>{t('common.done')}</Text>
               </Pressable>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
-              <Text style={styles.intro}>
-                Языки любви — это способы, которыми люди чувствуют и выражают любовь. У каждого обычно есть один-два
-                главных: зная свой и партнёра, легче показывать заботу так, чтобы партнёр услышал.
-              </Text>
+              <Text style={styles.intro}>{t('loveInfo.intro')}</Text>
 
-              {LOVE_LANGUAGE_INFO.map((item) => (
-                <View key={item.label} style={styles.item}>
+              {loveLanguageInfo().map((item) => (
+                <View key={item.key} style={styles.item}>
                   <Text style={styles.itemEmoji}>{item.emoji}</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.itemLabel}>{item.label}</Text>

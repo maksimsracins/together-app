@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
+import { useLanguageStore } from '../src/i18n';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
@@ -64,7 +65,9 @@ function RootLayout() {
   const bootstrap = useAuthStore((s) => s.bootstrap);
 
   useEffect(() => {
-    bootstrap();
+    // Device language first, so the signed-in account's language (applied
+    // during bootstrap) takes precedence over it.
+    useLanguageStore.getState().hydrate().finally(bootstrap);
   }, [bootstrap]);
 
   useEffect(() => {

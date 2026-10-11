@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { formatDistanceToNow } from 'date-fns';
-import { ru } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Screen } from '../src/components/Screen';
@@ -10,8 +9,11 @@ import { Card } from '../src/components/Card';
 import { Mascot } from '../src/components/Mascot';
 import { useNotificationsStore } from '../src/store/useNotificationsStore';
 import { colors, radius, spacing, type } from '../src/theme';
+import { dateLocale, useLang, useT } from '../src/i18n';
 
 export default function NotificationsScreen() {
+  const t = useT();
+  const lang = useLang();
   const items = useNotificationsStore((s) => s.items);
   const load = useNotificationsStore((s) => s.load);
   const markAllRead = useNotificationsStore((s) => s.markAllRead);
@@ -30,12 +32,12 @@ export default function NotificationsScreen() {
 
   return (
     <Screen>
-      <BackHeader title="Уведомления" />
+      <BackHeader title={t('notifications.title')} />
 
       {items.length === 0 ? (
         <Card style={{ alignItems: 'center', marginTop: spacing.xl }}>
           <Mascot pose="listening" size={80} style={{ marginBottom: spacing.sm }} />
-          <Text style={styles.emptyText}>Пока нет уведомлений</Text>
+          <Text style={styles.emptyText}>{t('notifications.empty')}</Text>
         </Card>
       ) : (
         items.map((n) => (
@@ -43,7 +45,7 @@ export default function NotificationsScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.message}>{n.message}</Text>
               <Text style={styles.time}>
-                {formatDistanceToNow(new Date(n.createdAt), { locale: ru, addSuffix: true })}
+                {formatDistanceToNow(new Date(n.createdAt), { locale: dateLocale(lang), addSuffix: true })}
               </Text>
             </View>
             <Pressable onPress={() => handleDelete(n.id)} hitSlop={10} style={styles.deleteBtn}>

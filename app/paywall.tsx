@@ -9,25 +9,27 @@ import { Button } from '../src/components/Button';
 import { usePremiumStore } from '../src/store/usePremiumStore';
 import { API_BASE_URL } from '../src/services/http';
 import { colors, radius, spacing, type } from '../src/theme';
+import { t, useT } from '../src/i18n';
 
 const FEATURES = [
-  { emoji: '💌', text: 'Еженедельный AI-разбор вашей недели вдвоём' },
-  { emoji: '📸', text: 'Безлимитные записи и фото' },
-  { emoji: '🗓️', text: 'Гибкое расписание отчёта' },
-];
+  { emoji: '💌', text: 'paywall.feature1' },
+  { emoji: '📸', text: 'paywall.feature2' },
+  { emoji: '🗓️', text: 'paywall.feature3' },
+] as const;
 
 function packageLabel(pkg: PurchasesPackage) {
   switch (pkg.packageType) {
     case 'ANNUAL':
-      return 'Год';
+      return t('paywall.year');
     case 'MONTHLY':
-      return 'Месяц';
+      return t('paywall.month');
     default:
       return pkg.product.title;
   }
 }
 
 export default function Paywall() {
+  const tr = useT();
   const offering = usePremiumStore((s) => s.offering);
   const loadOffering = usePremiumStore((s) => s.loadOffering);
   const purchase = usePremiumStore((s) => s.purchase);
@@ -69,18 +71,18 @@ export default function Paywall() {
 
       <Text style={styles.emoji}>💞</Text>
       <Text style={styles.title}>Together Plus</Text>
-      <Text style={styles.subtitle}>Ваш бесплатный отчёт закончился — оформите подписку, чтобы получать его каждую неделю</Text>
+      <Text style={styles.subtitle}>{tr('paywall.subtitle')}</Text>
 
       <Card style={{ marginTop: spacing.xl }}>
         {FEATURES.map((f, i) => (
           <View key={f.text} style={[styles.featureRow, i > 0 && styles.featureRowBorder]}>
             <Text style={styles.featureEmoji}>{f.emoji}</Text>
-            <Text style={styles.featureText}>{f.text}</Text>
+            <Text style={styles.featureText}>{tr(f.text)}</Text>
           </View>
         ))}
       </Card>
 
-      {!offering && <Text style={styles.hint}>Загружаем тарифы…</Text>}
+      {!offering && <Text style={styles.hint}>{tr('paywall.loading')}</Text>}
 
       {offering && (
         <View style={styles.packagesRow}>
@@ -95,7 +97,7 @@ export default function Paywall() {
               >
                 {isAnnual && (
                   <View style={styles.badge}>
-                    <Text style={styles.badgeText}>Выгоднее</Text>
+                    <Text style={styles.badgeText}>{tr('paywall.bestValue')}</Text>
                   </View>
                 )}
                 <Text style={styles.packagePeriod}>{packageLabel(pkg)}</Text>
@@ -109,7 +111,7 @@ export default function Paywall() {
       {error && <Text style={styles.error}>⚠️ {error}</Text>}
 
       <Button
-        label="Оформить подписку"
+        label={tr('paywall.subscribe')}
         onPress={handlePurchase}
         disabled={!selected}
         loading={purchasing}
@@ -117,18 +119,17 @@ export default function Paywall() {
       />
 
       <Pressable onPress={restore} disabled={purchasing} hitSlop={8} style={styles.restoreBtn}>
-        <Text style={styles.restoreLabel}>Восстановить покупки</Text>
+        <Text style={styles.restoreLabel}>{tr('paywall.restore')}</Text>
       </Pressable>
 
       <Text style={styles.legal}>
-        Подписка автоматически продлевается, если не отменена как минимум за 24 часа до конца текущего периода.
-        Управлять подпиской можно в настройках Apple ID.{' '}
+        {tr('paywall.legal')}{' '}
         <Text style={styles.legalLink} onPress={() => Linking.openURL(`${API_BASE_URL}/terms`)}>
-          Условия использования
+          {tr('common.terms')}
         </Text>{' '}
         ·{' '}
         <Text style={styles.legalLink} onPress={() => Linking.openURL(`${API_BASE_URL}/privacy`)}>
-          Конфиденциальность
+          {tr('common.privacy')}
         </Text>
       </Text>
     </Screen>

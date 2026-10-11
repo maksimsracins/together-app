@@ -11,14 +11,16 @@ import { Avatar } from '../../src/components/Avatar';
 import { Button } from '../../src/components/Button';
 import { Chip } from '../../src/components/Chip';
 import { LoveLanguagesInfoButton } from '../../src/components/LoveLanguagesInfo';
-import { AVATAR_EMOJIS, LOVE_LANGUAGES } from '../../src/data/catalog';
+import { AVATAR_EMOJIS, LOVE_LANGUAGES, loveLanguageLabel } from '../../src/data/catalog';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { exportMyData } from '../../src/services/users';
 import { ApiError } from '../../src/services/http';
 import { colors, radius, spacing, type } from '../../src/theme';
 import { isPhotoTooLarge } from '../../src/utils/photo';
+import { intlLocale, useT } from '../../src/i18n';
 
 export default function EditProfile() {
+  const t = useT();
   const user = useAuthStore((s) => s.user)!;
   const partner = useAuthStore((s) => s.partner);
   const updateProfile = useAuthStore((s) => s.updateProfile);
@@ -55,11 +57,11 @@ export default function EditProfile() {
     try {
       const data = await exportMyData();
       await Share.share({
-        title: 'Мои данные Together',
+        title: t('edit.exportTitle'),
         message: JSON.stringify(data, null, 2),
       });
     } catch {
-      Alert.alert('Ошибка', 'Не удалось экспортировать данные. Попробуйте ещё раз.');
+      Alert.alert(t('common.error'), t('edit.exportFailed'));
     } finally {
       exportingRef.current = false;
       setExporting(false);
@@ -99,7 +101,7 @@ export default function EditProfile() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       router.back();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось сохранить профиль');
+      setError(err instanceof ApiError ? err.message : t('edit.saveFailed'));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -115,7 +117,7 @@ export default function EditProfile() {
   const pickFromLibrary = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Нет доступа', 'Разрешите доступ к фото в настройках, чтобы выбрать изображение.');
+      Alert.alert(t('photo.noAccess'), t('photo.libraryPermission'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -129,7 +131,7 @@ export default function EditProfile() {
     if (!result.canceled && asset?.base64) {
       const dataUri = `data:image/jpeg;base64,${asset.base64}`;
       if (isPhotoTooLarge(dataUri)) {
-        Alert.alert('Фото слишком большое', 'Попробуйте выбрать другое фото.');
+        Alert.alert(t('photo.tooLarge'), t('photo.tryAnother'));
       } else {
         setAvatarUri(dataUri);
       }
@@ -139,7 +141,7 @@ export default function EditProfile() {
   const pickFromCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Нет доступа', 'Разрешите доступ к камере в настройках, чтобы сделать фото.');
+      Alert.alert(t('photo.noAccess'), t('photo.cameraPermission'));
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -152,7 +154,7 @@ export default function EditProfile() {
     if (!result.canceled && asset?.base64) {
       const dataUri = `data:image/jpeg;base64,${asset.base64}`;
       if (isPhotoTooLarge(dataUri)) {
-        Alert.alert('Фото слишком большое', 'Попробуйте сделать снимок заново.');
+        Alert.alert(t('photo.tooLarge'), t('photo.retake'));
       } else {
         setAvatarUri(dataUri);
       }
@@ -161,21 +163,19 @@ export default function EditProfile() {
 
   const handleLeaveCouple = () => {
     Alert.alert(
-      'Убрать пару?',
-      partner
-        ? `Вы перестанете быть в паре с ${partner.name}.`
-        : 'Приглашение будет отменено, и код перестанет действовать.',
+      t('edit.leaveTitle'),
+      partner ? t('edit.leaveWithPartner', { name: partner.name }) : t('edit.leaveInvite'),
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Убрать',
+          text: t('edit.leaveConfirm'),
           style: 'destructive',
           onPress: async () => {
             try {
               await leaveCouple();
               router.back();
             } catch {
-              Alert.alert('Ошибка', 'Не удалось убрать пару. Попробуйте ещё раз.');
+              Alert.alert(t('common.error'), t('edit.leaveFailed'));
             }
           },
         },
@@ -185,21 +185,19 @@ export default function EditProfile() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Удалить аккаунт?',
-      partner
-        ? `Все ваши записи будут удалены без возможности восстановления, а ваша пара с ${partner.name} расторгнута.`
-        : 'Все ваши записи будут удалены без возможности восстановления. Это действие необратимо.',
+      t('edit.deleteTitle'),
+      partner ? t('edit.deleteWithPartner', { name: partner.name }) : t('edit.deleteSolo'),
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Удалить навсегда',
+          text: t('edit.deleteConfirm'),
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteAccount();
               router.replace('/(auth)/welcome');
             } catch {
-              Alert.alert('Ошибка', 'Не удалось удалить аккаунт. Попробуйте ещё раз.');
+              Alert.alert(t('common.error'), t('edit.deleteFailed'));
             }
           },
         },
@@ -209,12 +207,12 @@ export default function EditProfile() {
 
   const handleChoosePhoto = () => {
     const options = [
-      { text: 'Сделать фото', onPress: pickFromCamera },
-      { text: 'Выбрать из галереи', onPress: pickFromLibrary },
-      ...(avatarUri ? [{ text: 'Удалить фото', onPress: () => setAvatarUri(null), style: 'destructive' as const }] : []),
-      { text: 'Отмена', style: 'cancel' as const },
+      { text: t('photo.take'), onPress: pickFromCamera },
+      { text: t('photo.choose'), onPress: pickFromLibrary },
+      ...(avatarUri ? [{ text: t('photo.remove'), onPress: () => setAvatarUri(null), style: 'destructive' as const }] : []),
+      { text: t('common.cancel'), style: 'cancel' as const },
     ];
-    Alert.alert('Фото профиля', undefined, options);
+    Alert.alert(t('photo.profileTitle'), undefined, options);
   };
 
   return (
@@ -227,14 +225,14 @@ export default function EditProfile() {
           </Pressable>
         </View>
 
-        <Text style={styles.title} numberOfLines={1}>Редактировать профиль</Text>
+        <Text style={styles.title} numberOfLines={1}>{t('edit.title')}</Text>
 
         <View style={[styles.headerSide, { justifyContent: 'flex-end' }]}>
           <Pressable onPress={handleSave} disabled={!canSave || saving} hitSlop={10}>
             {saving ? (
               <ActivityIndicator size="small" color={colors.roseDark} />
             ) : (
-              <Text style={[styles.saveText, !canSave && styles.saveTextDisabled]}>Сохранить</Text>
+              <Text style={[styles.saveText, !canSave && styles.saveTextDisabled]}>{t('common.save')}</Text>
             )}
           </Pressable>
         </View>
@@ -248,7 +246,7 @@ export default function EditProfile() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.label}>Фото профиля</Text>
+        <Text style={styles.label}>{t('photo.profileTitle')}</Text>
         <View style={styles.photoRow}>
           <Avatar emoji={avatarEmoji} uri={avatarUri} size={88} />
           <Pressable style={styles.photoBadge} onPress={handleChoosePhoto} hitSlop={8}>
@@ -257,7 +255,7 @@ export default function EditProfile() {
         </View>
 
         <Text style={[styles.label, { marginTop: spacing.lg }]}>
-          {avatarUri ? 'Или замените эмодзи-аватаром' : 'Или выберите эмодзи-аватар'}
+          {avatarUri ? t('edit.emojiReplace') : t('edit.emojiChoose')}
         </Text>
         <View style={styles.avatarRow}>
           {AVATAR_EMOJIS.map((emoji) => (
@@ -274,14 +272,14 @@ export default function EditProfile() {
           ))}
         </View>
 
-        <Text style={[styles.label, { marginTop: spacing.lg }]}>Имя</Text>
-        <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Как вас называть?" placeholderTextColor={colors.inkMuted} maxLength={20} />
+        <Text style={[styles.label, { marginTop: spacing.lg }]}>{t('signup.name')}</Text>
+        <TextInput style={styles.input} value={name} onChangeText={setName} placeholder={t('signup.namePlaceholder')} placeholderTextColor={colors.inkMuted} maxLength={20} />
 
-        <Text style={[styles.label, { marginTop: spacing.lg }]}>Дата начала отношений</Text>
+        <Text style={[styles.label, { marginTop: spacing.lg }]}>{t('profile.relationshipStart')}</Text>
         <Pressable style={styles.dateField} onPress={() => setShowDatePicker(true)}>
           <Ionicons name="calendar-outline" size={18} color={colors.roseDark} />
           <Text style={styles.dateFieldText}>
-            {relationshipStartDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+            {relationshipStartDate.toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long', year: 'numeric' })}
           </Text>
         </Pressable>
 
@@ -295,16 +293,16 @@ export default function EditProfile() {
               <Pressable style={styles.pickerBackdrop} onPress={() => setShowDatePicker(false)} />
               <View style={styles.pickerSheet}>
                 <View style={styles.pickerSheetHeader}>
-                  <Text style={styles.pickerSheetTitle}>Дата начала отношений</Text>
+                  <Text style={styles.pickerSheetTitle}>{t('profile.relationshipStart')}</Text>
                   <Pressable onPress={() => setShowDatePicker(false)}>
-                    <Text style={styles.pickerDone}>Готово</Text>
+                    <Text style={styles.pickerDone}>{t('common.done')}</Text>
                   </Pressable>
                 </View>
                 <DateTimePicker
                   value={relationshipStartDate}
                   mode="date"
                   display="spinner"
-                  locale="ru-RU"
+                  locale={intlLocale()}
                   maximumDate={new Date()}
                   onChange={onChangeDate}
                   style={{ alignSelf: 'center' }}
@@ -315,21 +313,21 @@ export default function EditProfile() {
         )}
 
         <View style={[styles.labelRow, { marginTop: spacing.lg }]}>
-          <Text style={[styles.label, { marginBottom: 0 }]}>Языки любви</Text>
+          <Text style={[styles.label, { marginBottom: 0 }]}>{t('common.loveLanguages')}</Text>
           <LoveLanguagesInfoButton />
         </View>
         <View style={styles.chipsWrap}>
           {LOVE_LANGUAGES.map((l) => (
-            <Chip key={l} label={l} tone="rose" selected={loveLanguages.includes(l)} onPress={() => toggleLoveLanguage(l)} />
+            <Chip key={l} label={loveLanguageLabel(l)} tone="rose" selected={loveLanguages.includes(l)} onPress={() => toggleLoveLanguage(l)} />
           ))}
         </View>
 
-        <Text style={[styles.label, { marginTop: spacing.lg }]}>Интересы</Text>
+        <Text style={[styles.label, { marginTop: spacing.lg }]}>{t('common.interests')}</Text>
         <View style={styles.tagInputRow}>
           <Ionicons name="add-circle-outline" size={18} color={colors.inkMuted} />
           <TextInput
             style={styles.tagInput}
-            placeholder="Добавить интерес и нажать Готово"
+            placeholder={t('edit.interestPlaceholder')}
             placeholderTextColor={colors.inkMuted}
             value={interestInput}
             onChangeText={setInterestInput}
@@ -345,64 +343,64 @@ export default function EditProfile() {
           </View>
         )}
 
-        <Text style={[styles.label, { marginTop: spacing.lg }]}>Работа</Text>
+        <Text style={[styles.label, { marginTop: spacing.lg }]}>{t('edit.work')}</Text>
         <TextInput
           style={styles.input}
           value={occupation}
           onChangeText={setOccupation}
-          placeholder="Кем вы работаете"
+          placeholder={t('edit.workPlaceholder')}
           placeholderTextColor={colors.inkMuted}
         />
 
-        <Text style={[styles.label, { marginTop: spacing.lg }]}>Привычки</Text>
+        <Text style={[styles.label, { marginTop: spacing.lg }]}>{t('edit.habits')}</Text>
         <TextInput
           style={[styles.input, styles.multilineInput]}
           value={habits}
           onChangeText={setHabits}
-          placeholder="Например: рано встаю, занимаюсь спортом по утрам…"
+          placeholder={t('edit.habitsPlaceholder')}
           placeholderTextColor={colors.inkMuted}
           multiline
           textAlignVertical="top"
         />
-        <Text style={styles.hint}>Возраст, работа и привычки помогают AI точнее разбирать ваш отчёт</Text>
+        <Text style={styles.hint}>{t('edit.aiHint')}</Text>
 
-        <Text style={[styles.label, { marginTop: spacing.lg }]}>Город</Text>
+        <Text style={[styles.label, { marginTop: spacing.lg }]}>{t('edit.city')}</Text>
         <TextInput
           style={styles.input}
           value={city}
           onChangeText={setCity}
-          placeholder="Например: Москва"
+          placeholder={t('edit.cityPlaceholder')}
           placeholderTextColor={colors.inkMuted}
         />
-        <Text style={styles.hint}>Погода вашего города появится в отчёте недели</Text>
+        <Text style={styles.hint}>{t('edit.cityHint')}</Text>
 
         <DateField
-          label="Дата рождения"
+          label={t('edit.birthdate')}
           value={birthdate}
           mode="date"
           defaultValue={subYears(new Date(), 25)}
           maximumDate={new Date()}
-          placeholder="Не указана"
+          placeholder={t('edit.notSet')}
           onChange={setBirthdate}
           onClear={() => setBirthdate(null)}
         />
 
         {user.coupleId && (
           <>
-            <Text style={[styles.label, { marginTop: spacing.lg }]}>Пара</Text>
-            <Button label="Убрать пару" variant="outline" onPress={handleLeaveCouple} />
+            <Text style={[styles.label, { marginTop: spacing.lg }]}>{t('edit.couple')}</Text>
+            <Button label={t('edit.leaveButton')} variant="outline" onPress={handleLeaveCouple} />
           </>
         )}
 
-        <Text style={[styles.label, { marginTop: spacing.lg }]}>Аккаунт</Text>
+        <Text style={[styles.label, { marginTop: spacing.lg }]}>{t('edit.account')}</Text>
         <Button
-          label={exporting ? 'Готовим экспорт…' : 'Экспортировать мои данные'}
+          label={exporting ? t('edit.exporting') : t('edit.export')}
           variant="outline"
           loading={exporting}
           onPress={handleExportData}
           style={{ marginBottom: spacing.md }}
         />
-        <Button label="Удалить аккаунт" variant="outline" onPress={handleDeleteAccount} />
+        <Button label={t('edit.deleteButton')} variant="outline" onPress={handleDeleteAccount} />
       </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -428,6 +426,7 @@ function DateField({
   onChange: (date: Date) => void;
   onClear: () => void;
 }) {
+  const t = useT();
   const [visible, setVisible] = useState(false);
   const pickerValue = value ?? defaultValue;
 
@@ -439,8 +438,8 @@ function DateField({
 
   const formatted = value
     ? mode === 'date'
-      ? value.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
-      : value.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+      ? value.toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long', year: 'numeric' })
+      : value.toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' })
     : placeholder;
 
   return (
@@ -470,14 +469,14 @@ function DateField({
               <View style={styles.pickerSheetHeader}>
                 <Text style={styles.pickerSheetTitle}>{label}</Text>
                 <Pressable onPress={() => setVisible(false)}>
-                  <Text style={styles.pickerDone}>Готово</Text>
+                  <Text style={styles.pickerDone}>{t('common.done')}</Text>
                 </Pressable>
               </View>
               <DateTimePicker
                 value={pickerValue}
                 mode={mode}
                 display="spinner"
-                locale="ru-RU"
+                locale={intlLocale()}
                 maximumDate={maximumDate}
                 onChange={handleChange}
                 style={{ alignSelf: 'center' }}

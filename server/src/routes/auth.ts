@@ -5,6 +5,7 @@ import { signToken } from '../auth';
 import { serializeUser } from '../serializers';
 import { verifyAppleIdentityToken } from '../apple';
 import { authLimiter } from '../rateLimiters';
+import { DEFAULT_LANG, isLang, langOf, t } from '../i18n';
 
 export const authRouter = Router();
 authRouter.use(authLimiter);
@@ -15,30 +16,36 @@ const MAX_NAME_LENGTH = 20;
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync('no-such-user-timing-safe-placeholder', 10);
 
 authRouter.post('/signup', async (req, res) => {
-  const { email, password, name } = req.body as { email?: string; password?: string; name?: string };
+  const { email, password, name, language } = req.body as {
+    email?: string;
+    password?: string;
+    name?: string;
+    language?: string;
+  };
+  const lang = langOf(req);
 
   if (!email || !password || !name) {
-    res.status(400).json({ error: 'email, password и name обязательны' });
+    res.status(400).json({ error: t(lang, 'signupFieldsRequired') });
     return;
   }
   if (password.length < 6) {
-    res.status(400).json({ error: 'Пароль должен быть не короче 6 символов' });
+    res.status(400).json({ error: t(lang, 'passwordTooShort') });
     return;
   }
   if (name.trim().length > MAX_NAME_LENGTH) {
-    res.status(400).json({ error: `Имя не может быть длиннее ${MAX_NAME_LENGTH} символов` });
+    res.status(400).json({ error: t(lang, 'nameTooLong', { max: MAX_NAME_LENGTH }) });
     return;
   }
 
   const existing = await db.user.findUnique({ where: { email: email.toLowerCase() } });
   if (existing) {
-    res.status(409).json({ error: 'Пользователь с таким email уже существует' });
+    res.status(409).json({ error: t(lang, 'emailTaken') });
     return;
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await db.user.create({
-    data: { email: email.toLowerCase(), passwordHash, name },
+    data: { email: email.toLowerCase(), passwordHash, name, language: isLang(language) ? language : DEFAULT_LANG },
   });
 
   res.status(201).json({ token: signToken(user.id), user: serializeUser(user) });
@@ -46,8 +53,9 @@ authRouter.post('/signup', async (req, res) => {
 
 authRouter.post('/login', async (req, res) => {
   const { email, password } = req.body as { email?: string; password?: string };
+  const lang = langOf(req);
   if (!email || !password) {
-    res.status(400).json({ error: 'email и password обязательны' });
+    res.status(400).json({ error: t(lang, 'loginFieldsRequired') });
     return;
   }
 
@@ -58,7 +66,7 @@ authRouter.post('/login', async (req, res) => {
   // letting an attacker enumerate registered emails purely by timing.
   const valid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
   if (!user || !user.passwordHash || !valid) {
-    res.status(401).json({ error: 'Неверный email или пароль' });
+    res.status(401).json({ error: t(lang, 'invalidCredentials') });
     return;
   }
 
@@ -66,9 +74,14 @@ authRouter.post('/login', async (req, res) => {
 });
 
 authRouter.post('/apple', async (req, res) => {
-  const { identityToken, fullName } = req.body as { identityToken?: string; fullName?: string };
+  const { identityToken, fullName, language } = req.body as {
+    identityToken?: string;
+    fullName?: string;
+    language?: string;
+  };
+  const lang = langOf(req);
   if (!identityToken) {
-    res.status(400).json({ error: 'identityToken обязателен' });
+    res.status(400).json({ error: t(lang, 'identityTokenRequired') });
     return;
   }
 
@@ -76,7 +89,7 @@ authRouter.post('/apple', async (req, res) => {
   try {
     payload = await verifyAppleIdentityToken(identityToken);
   } catch {
-    res.status(401).json({ error: 'Не удалось проверить Apple identity token' });
+    res.status(401).json({ error: t(lang, 'appleTokenInvalid') });
     return;
   }
 
@@ -94,12 +107,17 @@ authRouter.post('/apple', async (req, res) => {
 
   if (!user) {
     if (!payload.email) {
-      res.status(400).json({ error: 'Apple не передал email для регистрации' });
+      res.status(400).json({ error: t(lang, 'appleNoEmail') });
       return;
     }
-    const name = (fullName || payload.email.split('@')[0]).trim().slice(0, MAX_NAME_LENGTH) || 'Пользователь';
+    const name = (fullName || payload.email.split('@')[0]).trim().slice(0, MAX_NAME_LENGTH) || t(lang, 'defaultUserName');
     user = await db.user.create({
-      data: { email: payload.email.toLowerCase(), appleId: payload.sub, name },
+      data: {
+        email: payload.email.toLowerCase(),
+        appleId: payload.sub,
+        name,
+        language: isLang(language) ? language : DEFAULT_LANG,
+      },
     });
   }
 

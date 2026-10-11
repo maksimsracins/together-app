@@ -5,6 +5,7 @@ import { serializeEntry, serializeEntryListItem } from '../serializers';
 import { weekIdFor } from '../week';
 import { sendPushNotification } from '../push';
 import { logError } from '../sentry';
+import { langOf, MessageKey, normalizeLang, t } from '../i18n';
 
 export const entriesRouter = Router();
 
@@ -24,14 +25,14 @@ interface EntryBody {
   photoUri?: string | null;
 }
 
-function validateEntryBody(body: EntryBody): string | null {
-  if (!body.type || !ENTRY_TYPES.includes(body.type)) return 'Некорректный тип записи';
-  if (!body.emotion || !EMOTIONS.includes(body.emotion)) return 'Некорректная эмоция';
-  if (!body.text || !body.text.trim()) return 'Текст записи обязателен';
-  if (body.text.length > 1000) return 'Текст не может быть длиннее 1000 символов';
+function validateEntryBody(body: EntryBody): MessageKey | null {
+  if (!body.type || !ENTRY_TYPES.includes(body.type)) return 'invalidEntryType';
+  if (!body.emotion || !EMOTIONS.includes(body.emotion)) return 'invalidEmotion';
+  if (!body.text || !body.text.trim()) return 'entryTextRequired';
+  if (body.text.length > 1000) return 'entryTextTooLong';
   if (body.photoUri) {
-    if (!body.photoUri.startsWith('data:image/')) return 'Некорректный формат фото';
-    if (body.photoUri.length > MAX_PHOTO_DATA_URI_LENGTH) return 'Фото слишком большое';
+    if (!body.photoUri.startsWith('data:image/')) return 'invalidPhotoFormat';
+    if (body.photoUri.length > MAX_PHOTO_DATA_URI_LENGTH) return 'photoTooLarge';
   }
   return null;
 }
@@ -91,7 +92,7 @@ entriesRouter.get('/partner', async (req: AuthedRequest, res) => {
 entriesRouter.get('/:id', async (req: AuthedRequest, res) => {
   const entry = await db.entry.findUnique({ where: { id: req.params.id } });
   if (!entry) {
-    res.status(404).json({ error: 'Запись не найдена' });
+    res.status(404).json({ error: t(langOf(req), 'entryNotFound') });
     return;
   }
 
@@ -109,7 +110,7 @@ entriesRouter.get('/:id', async (req: AuthedRequest, res) => {
     ? await db.user.findFirst({ where: { coupleId: user.coupleId, id: { not: user.id } } })
     : null;
   if (!partner || entry.userId !== partner.id) {
-    res.status(404).json({ error: 'Запись не найдена' });
+    res.status(404).json({ error: t(langOf(req), 'entryNotFound') });
     return;
   }
 
@@ -118,7 +119,7 @@ entriesRouter.get('/:id', async (req: AuthedRequest, res) => {
     orderBy: { createdAt: 'desc' },
   });
   if (!latestReport || entry.createdAt > latestReport.createdAt) {
-    res.status(404).json({ error: 'Запись не найдена' });
+    res.status(404).json({ error: t(langOf(req), 'entryNotFound') });
     return;
   }
 
@@ -157,7 +158,7 @@ entriesRouter.post('/', async (req: AuthedRequest, res) => {
   const body = req.body as EntryBody;
   const error = validateEntryBody(body);
   if (error) {
-    res.status(400).json({ error });
+    res.status(400).json({ error: t(langOf(req), error) });
     return;
   }
 
@@ -197,7 +198,7 @@ async function notifyPartnerOfNewEntry(coupleId: string, authorId: string, autho
   const partner = await db.user.findFirst({ where: { coupleId, id: { not: authorId } } });
   if (!partner) return;
 
-  const message = `${authorName} поделился(-ась) чем-то новым 💌`;
+  const message = t(normalizeLang(partner.language), 'notifPartnerEntry', { name: authorName });
   await db.notification.create({ data: { userId: partner.id, type: 'partner_entry', message } });
 
   if (!partner.pushToken) {
@@ -210,18 +211,18 @@ async function notifyPartnerOfNewEntry(coupleId: string, authorId: string, autho
 entriesRouter.patch('/:id', async (req: AuthedRequest, res) => {
   const existing = await db.entry.findUnique({ where: { id: req.params.id } });
   if (!existing || existing.userId !== req.userId) {
-    res.status(404).json({ error: 'Запись не найдена' });
+    res.status(404).json({ error: t(langOf(req), 'entryNotFound') });
     return;
   }
   if (existing.includedInReportId) {
-    res.status(409).json({ error: 'Эта запись уже вошла в отчёт — изменить её нельзя' });
+    res.status(409).json({ error: t(langOf(req), 'entryLockedEdit') });
     return;
   }
 
   const body = req.body as EntryBody;
   const error = validateEntryBody(body);
   if (error) {
-    res.status(400).json({ error });
+    res.status(400).json({ error: t(langOf(req), error) });
     return;
   }
 
@@ -245,7 +246,7 @@ entriesRouter.patch('/:id/reaction', async (req: AuthedRequest, res) => {
   const { emoji } = req.body as { emoji?: string | null };
   const existing = await db.entry.findUnique({ where: { id: req.params.id } });
   if (!existing) {
-    res.status(404).json({ error: 'Запись не найдена' });
+    res.status(404).json({ error: t(langOf(req), 'entryNotFound') });
     return;
   }
 
@@ -260,7 +261,7 @@ entriesRouter.patch('/:id/reaction', async (req: AuthedRequest, res) => {
     ]);
     const sameCouple = me?.coupleId && author?.coupleId && me.coupleId === author.coupleId;
     if (!sameCouple) {
-      res.status(404).json({ error: 'Запись не найдена' });
+      res.status(404).json({ error: t(langOf(req), 'entryNotFound') });
       return;
     }
   }
@@ -275,11 +276,11 @@ entriesRouter.patch('/:id/reaction', async (req: AuthedRequest, res) => {
 entriesRouter.delete('/:id', async (req: AuthedRequest, res) => {
   const existing = await db.entry.findUnique({ where: { id: req.params.id } });
   if (!existing || existing.userId !== req.userId) {
-    res.status(404).json({ error: 'Запись не найдена' });
+    res.status(404).json({ error: t(langOf(req), 'entryNotFound') });
     return;
   }
   if (existing.includedInReportId) {
-    res.status(409).json({ error: 'Эта запись уже вошла в отчёт — удалить её нельзя' });
+    res.status(409).json({ error: t(langOf(req), 'entryLockedDelete') });
     return;
   }
   await db.entry.delete({ where: { id: existing.id } });

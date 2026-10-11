@@ -8,6 +8,7 @@ import {
   purchasePackage as purchasePackageService,
   restorePurchases as restorePurchasesService,
 } from '../services/purchases';
+import { t } from '../i18n';
 
 interface PremiumState {
   isPremium: boolean;
@@ -76,7 +77,7 @@ export const usePremiumStore = create<PremiumState>((set, get) => {
         const userCancelled = (err as { userCancelled?: boolean } | null)?.userCancelled;
         set({
           purchasing: false,
-          error: userCancelled ? null : 'Не удалось оформить подписку. Попробуйте ещё раз.',
+          error: userCancelled ? null : t('premium.purchaseFailed'),
         });
         return false;
       }
@@ -87,10 +88,10 @@ export const usePremiumStore = create<PremiumState>((set, get) => {
       try {
         const isPremium = await restorePurchasesService();
         set({ isPremium, purchasing: false });
-        if (!isPremium) set({ error: 'Активная подписка не найдена для этого Apple ID.' });
+        if (!isPremium) set({ error: t('premium.noActive') });
         return isPremium;
       } catch {
-        set({ purchasing: false, error: 'Не удалось восстановить покупки.' });
+        set({ purchasing: false, error: t('premium.restoreFailed') });
         return false;
       }
     },

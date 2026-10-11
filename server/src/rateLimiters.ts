@@ -1,4 +1,5 @@
 import rateLimit from 'express-rate-limit';
+import { langOf, t } from './i18n';
 
 // The e2e suite legitimately creates far more accounts/join attempts per
 // "IP" (all in-process, indistinguishable from one caller) than any real
@@ -13,7 +14,7 @@ export const authLimiter = rateLimit({
   limit: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Слишком много попыток. Попробуйте позже.' },
+  message: (req: Parameters<typeof langOf>[0]) => ({ error: t(langOf(req), 'tooManyAttempts') }),
   skip,
 });
 
@@ -27,7 +28,7 @@ export const joinLimiter = rateLimit({
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Слишком много попыток. Попробуйте позже.' },
+  message: (req: Parameters<typeof langOf>[0]) => ({ error: t(langOf(req), 'tooManyAttempts') }),
   skip,
 });
 
@@ -40,6 +41,6 @@ export const generateReportLimiter = rateLimit({
   limit: 3,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Слишком много запросов на генерацию отчёта. Попробуйте позже.' },
+  message: (req: Parameters<typeof langOf>[0]) => ({ error: t(langOf(req), 'tooManyReportRequests') }),
   skip,
 });

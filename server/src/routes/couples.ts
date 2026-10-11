@@ -5,12 +5,11 @@ import { AuthedRequest, requireAuth } from '../auth';
 import { joinLimiter } from '../rateLimiters';
 import { logError } from '../sentry';
 import { FREE_REPORT_LIMIT } from '../constants';
+import { langOf, normalizeLang, t, weekdayName } from '../i18n';
 
 export const couplesRouter = Router();
 
 couplesRouter.use(requireAuth);
-
-const WEEKDAY_NAMES = ['', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
 
 function randomCode() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
@@ -71,7 +70,7 @@ export async function ensureCoupleContext(userId: string) {
 couplesRouter.post('/', async (req: AuthedRequest, res) => {
   const user = await db.user.findUnique({ where: { id: req.userId } });
   if (!user) {
-    res.status(404).json({ error: 'User not found' });
+    res.status(404).json({ error: t(langOf(req), 'userNotFound') });
     return;
   }
 
@@ -91,13 +90,13 @@ couplesRouter.post('/', async (req: AuthedRequest, res) => {
 couplesRouter.post('/join', joinLimiter, async (req: AuthedRequest, res) => {
   const { code } = req.body as { code?: string };
   if (!code) {
-    res.status(400).json({ error: 'code обязателен' });
+    res.status(400).json({ error: t(langOf(req), 'codeRequired') });
     return;
   }
 
   const user = await db.user.findUnique({ where: { id: req.userId } });
   if (!user) {
-    res.status(404).json({ error: 'User not found' });
+    res.status(404).json({ error: t(langOf(req), 'userNotFound') });
     return;
   }
 
@@ -106,7 +105,7 @@ couplesRouter.post('/join', joinLimiter, async (req: AuthedRequest, res) => {
     include: { members: true },
   });
   if (!couple) {
-    res.status(404).json({ error: 'Код приглашения не найден' });
+    res.status(404).json({ error: t(langOf(req), 'inviteNotFound') });
     return;
   }
 
@@ -117,13 +116,13 @@ couplesRouter.post('/join', joinLimiter, async (req: AuthedRequest, res) => {
   }
 
   if (user.coupleId) {
-    res.status(409).json({ error: 'Вы уже состоите в паре' });
+    res.status(409).json({ error: t(langOf(req), 'alreadyInCouple') });
     return;
   }
 
   const otherMembers = couple.members.filter((m) => m.id !== user.id);
   if (otherMembers.length >= 2) {
-    res.status(409).json({ error: 'В этой паре уже два участника' });
+    res.status(409).json({ error: t(langOf(req), 'coupleFull') });
     return;
   }
 
@@ -139,7 +138,7 @@ couplesRouter.post('/join', joinLimiter, async (req: AuthedRequest, res) => {
         data: otherMembers.map((other) => ({
           userId: other.id,
           type: 'partner_joined',
-          message: `${user.name} присоединил(-ась) к вам в Together 💞`,
+          message: t(normalizeLang(other.language), 'notifPartnerJoined', { name: user.name }),
         })),
       });
     } catch (err) {
@@ -153,7 +152,7 @@ couplesRouter.post('/join', joinLimiter, async (req: AuthedRequest, res) => {
 couplesRouter.post('/leave', async (req: AuthedRequest, res) => {
   const user = await db.user.findUnique({ where: { id: req.userId } });
   if (!user?.coupleId) {
-    res.status(400).json({ error: 'Вы не состоите в паре' });
+    res.status(400).json({ error: t(langOf(req), 'notInCouple') });
     return;
   }
 
@@ -168,7 +167,7 @@ couplesRouter.post('/leave', async (req: AuthedRequest, res) => {
       data: others.map((other) => ({
         userId: other.id,
         type: 'partner_left',
-        message: `${user.name} покинул(а) вашу пару в Together.`,
+        message: t(normalizeLang(other.language), 'notifPartnerLeft', { name: user.name }),
       })),
     });
   }
@@ -186,7 +185,7 @@ couplesRouter.post('/leave', async (req: AuthedRequest, res) => {
 couplesRouter.get('/settings', async (req: AuthedRequest, res) => {
   const user = await db.user.findUnique({ where: { id: req.userId } });
   if (!user) {
-    res.status(404).json({ error: 'Пользователь не найден' });
+    res.status(404).json({ error: t(langOf(req), 'userNotFound') });
     return;
   }
 
@@ -243,17 +242,17 @@ couplesRouter.patch('/settings', async (req: AuthedRequest, res) => {
   const body = req.body as CoupleSettingsBody;
 
   if (body.reportWeekday !== undefined && (!Number.isInteger(body.reportWeekday) || body.reportWeekday < 1 || body.reportWeekday > 7)) {
-    res.status(400).json({ error: 'Некорректный день недели' });
+    res.status(400).json({ error: t(langOf(req), 'invalidWeekday') });
     return;
   }
   if (body.reportHour !== undefined && (!Number.isInteger(body.reportHour) || body.reportHour < 0 || body.reportHour > 23)) {
-    res.status(400).json({ error: 'Некорректное время' });
+    res.status(400).json({ error: t(langOf(req), 'invalidTime') });
     return;
   }
 
   const ctx = await ensureCoupleContext(req.userId!);
   if (!ctx) {
-    res.status(404).json({ error: 'Пользователь не найден' });
+    res.status(404).json({ error: t(langOf(req), 'userNotFound') });
     return;
   }
   const { couple, me, partner } = ctx;
@@ -270,7 +269,7 @@ couplesRouter.patch('/settings', async (req: AuthedRequest, res) => {
       scheduleChanges = [];
     }
     if (scheduleChanges.length >= SCHEDULE_CHANGE_LIMIT) {
-      res.status(429).json({ error: 'Вы уже меняли время отчёта 3 раза за последние 7 дней. Попробуйте позже.' });
+      res.status(429).json({ error: t(langOf(req), 'scheduleChangeLimit') });
       return;
     }
     scheduleChanges = [...scheduleChanges, new Date(now).toISOString()];
@@ -299,14 +298,19 @@ couplesRouter.patch('/settings', async (req: AuthedRequest, res) => {
   });
 
   if (partner) {
+    // Written in the partner's language -- they're the one who reads it.
+    const lang = normalizeLang(partner.language);
+    const state = (on: boolean) => t(lang, on ? 'stateOn' : 'stateOff');
     const changes: string[] = [];
-    if (body.reportWeekday !== undefined) changes.push(`день отчёта на ${WEEKDAY_NAMES[body.reportWeekday]}`);
-    if (body.reportHour !== undefined) changes.push(`время отчёта на ${body.reportHour}:00`);
+    if (body.reportWeekday !== undefined) {
+      changes.push(t(lang, 'changeWeekday', { day: weekdayName(lang, body.reportWeekday) }));
+    }
+    if (body.reportHour !== undefined) changes.push(t(lang, 'changeHour', { hour: body.reportHour }));
     if (body.notificationsEnabled !== undefined) {
-      changes.push(`уведомление о новом отчёте (${body.notificationsEnabled ? 'включено' : 'выключено'})`);
+      changes.push(t(lang, 'changeReportNotifications', { state: state(body.notificationsEnabled) }));
     }
     if (body.partnerActivityNotificationsEnabled !== undefined) {
-      changes.push(`уведомление «партнёр поделился» (${body.partnerActivityNotificationsEnabled ? 'включено' : 'выключено'})`);
+      changes.push(t(lang, 'changePartnerNotifications', { state: state(body.partnerActivityNotificationsEnabled) }));
     }
 
     if (changes.length > 0) {
@@ -315,7 +319,7 @@ couplesRouter.patch('/settings', async (req: AuthedRequest, res) => {
           data: {
             userId: partner.id,
             type: 'report_settings_changed',
-            message: `${me.name} изменил(а) настройки отчёта: ${changes.join(', ')}.`,
+            message: t(lang, 'notifSettingsChanged', { name: me.name, changes: changes.join(', ') }),
           },
         })
         .catch((err) => logError('Failed to notify of settings change', err));

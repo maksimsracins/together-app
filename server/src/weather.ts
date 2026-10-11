@@ -1,6 +1,8 @@
 // Historical weather for a couple's report window, via Open-Meteo (free,
 // no API key). Used only as supplementary display/context -- never a
 // required part of a report, since a partner may not have set a city.
+import { Lang } from './i18n';
+
 export interface WeatherSummary {
   city: string;
   minTemp: number;
@@ -9,31 +11,48 @@ export interface WeatherSummary {
   emoji: string;
 }
 
-const WEATHER_CODE_META: Record<number, { label: string; emoji: string }> = {
-  0: { label: 'ясно', emoji: '☀️' },
-  1: { label: 'преимущественно ясно', emoji: '🌤️' },
-  2: { label: 'переменная облачность', emoji: '⛅' },
-  3: { label: 'облачно', emoji: '☁️' },
-  45: { label: 'туман', emoji: '🌫️' },
-  48: { label: 'туман', emoji: '🌫️' },
-  51: { label: 'морось', emoji: '🌦️' },
-  53: { label: 'морось', emoji: '🌦️' },
-  55: { label: 'морось', emoji: '🌦️' },
-  61: { label: 'дождь', emoji: '🌧️' },
-  63: { label: 'дождь', emoji: '🌧️' },
-  65: { label: 'сильный дождь', emoji: '🌧️' },
-  71: { label: 'снег', emoji: '🌨️' },
-  73: { label: 'снег', emoji: '🌨️' },
-  75: { label: 'сильный снег', emoji: '❄️' },
-  80: { label: 'ливень', emoji: '🌧️' },
-  81: { label: 'ливень', emoji: '🌧️' },
-  82: { label: 'сильный ливень', emoji: '⛈️' },
-  95: { label: 'гроза', emoji: '⛈️' },
+const WEATHER_LABELS: Record<string, Record<Lang, string>> = {
+  clear: { ru: 'ясно', en: 'clear', lv: 'skaidrs' },
+  mainlyClear: { ru: 'преимущественно ясно', en: 'mainly clear', lv: 'pārsvarā skaidrs' },
+  partlyCloudy: { ru: 'переменная облачность', en: 'partly cloudy', lv: 'mainīgs mākoņu daudzums' },
+  cloudy: { ru: 'облачно', en: 'cloudy', lv: 'mākoņains' },
+  fog: { ru: 'туман', en: 'fog', lv: 'migla' },
+  drizzle: { ru: 'морось', en: 'drizzle', lv: 'smidzina' },
+  rain: { ru: 'дождь', en: 'rain', lv: 'lietus' },
+  heavyRain: { ru: 'сильный дождь', en: 'heavy rain', lv: 'stiprs lietus' },
+  snow: { ru: 'снег', en: 'snow', lv: 'sniegs' },
+  heavySnow: { ru: 'сильный снег', en: 'heavy snow', lv: 'stiprs sniegs' },
+  showers: { ru: 'ливень', en: 'showers', lv: 'lietusgāze' },
+  heavyShowers: { ru: 'сильный ливень', en: 'heavy showers', lv: 'stipra lietusgāze' },
+  thunderstorm: { ru: 'гроза', en: 'thunderstorm', lv: 'pērkona negaiss' },
+  variable: { ru: 'переменная погода', en: 'variable weather', lv: 'mainīgi laikapstākļi' },
 };
 
-async function geocode(city: string): Promise<{ lat: number; lon: number } | null> {
+const WEATHER_CODE_META: Record<number, { label: keyof typeof WEATHER_LABELS; emoji: string }> = {
+  0: { label: 'clear', emoji: '☀️' },
+  1: { label: 'mainlyClear', emoji: '🌤️' },
+  2: { label: 'partlyCloudy', emoji: '⛅' },
+  3: { label: 'cloudy', emoji: '☁️' },
+  45: { label: 'fog', emoji: '🌫️' },
+  48: { label: 'fog', emoji: '🌫️' },
+  51: { label: 'drizzle', emoji: '🌦️' },
+  53: { label: 'drizzle', emoji: '🌦️' },
+  55: { label: 'drizzle', emoji: '🌦️' },
+  61: { label: 'rain', emoji: '🌧️' },
+  63: { label: 'rain', emoji: '🌧️' },
+  65: { label: 'heavyRain', emoji: '🌧️' },
+  71: { label: 'snow', emoji: '🌨️' },
+  73: { label: 'snow', emoji: '🌨️' },
+  75: { label: 'heavySnow', emoji: '❄️' },
+  80: { label: 'showers', emoji: '🌧️' },
+  81: { label: 'showers', emoji: '🌧️' },
+  82: { label: 'heavyShowers', emoji: '⛈️' },
+  95: { label: 'thunderstorm', emoji: '⛈️' },
+};
+
+async function geocode(city: string, lang: Lang): Promise<{ lat: number; lon: number } | null> {
   try {
-    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=ru`;
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=${lang}`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = (await res.json()) as { results?: { latitude: number; longitude: number }[] };
@@ -51,10 +70,11 @@ function toDateParam(d: Date) {
 export async function getWeatherSummary(
   city: string | null | undefined,
   start: Date,
-  end: Date
+  end: Date,
+  lang: Lang
 ): Promise<WeatherSummary | null> {
   if (!city) return null;
-  const loc = await geocode(city);
+  const loc = await geocode(city, lang);
   if (!loc) return null;
 
   try {
@@ -85,10 +105,21 @@ export async function getWeatherSummary(
         bestCount = count;
       }
     }
-    const meta = WEATHER_CODE_META[bestCode] ?? { label: 'переменная погода', emoji: '🌡️' };
+    const meta = WEATHER_CODE_META[bestCode] ?? { label: 'variable', emoji: '🌡️' };
 
-    return { city, minTemp, maxTemp, condition: meta.label, emoji: meta.emoji };
+    return { city, minTemp, maxTemp, condition: WEATHER_LABELS[meta.label][lang], emoji: meta.emoji };
   } catch {
     return null;
   }
+}
+
+// Summaries are stored with their condition already rendered in the language
+// the report was generated in; map it back to the canonical label so a
+// partner reading in another language sees it in theirs.
+export function localizeWeather(w: WeatherSummary | null, lang: Lang): WeatherSummary | null {
+  if (!w) return w;
+  for (const labels of Object.values(WEATHER_LABELS)) {
+    if (Object.values(labels).includes(w.condition)) return { ...w, condition: labels[lang] };
+  }
+  return w;
 }

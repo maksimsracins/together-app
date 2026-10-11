@@ -13,8 +13,10 @@ import { useAuthStore } from '../../src/store/useAuthStore';
 import { ApiError, API_BASE_URL } from '../../src/services/http';
 import { colors, spacing, type } from '../../src/theme';
 import { isPhotoTooLarge } from '../../src/utils/photo';
+import { useT } from '../../src/i18n';
 
 export default function Signup() {
+  const t = useT();
   const signup = useAuthStore((s) => s.signup);
   const updateProfile = useAuthStore((s) => s.updateProfile);
   const [name, setName] = useState('');
@@ -32,7 +34,7 @@ export default function Signup() {
   const pickFromLibrary = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Нет доступа', 'Разрешите доступ к фото в настройках, чтобы выбрать изображение.');
+      Alert.alert(t('photo.noAccess'), t('photo.libraryPermission'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -46,7 +48,7 @@ export default function Signup() {
     if (!result.canceled && asset?.base64) {
       const dataUri = `data:image/jpeg;base64,${asset.base64}`;
       if (isPhotoTooLarge(dataUri)) {
-        Alert.alert('Фото слишком большое', 'Попробуйте выбрать другое фото.');
+        Alert.alert(t('photo.tooLarge'), t('photo.tryAnother'));
       } else {
         setAvatarUri(dataUri);
       }
@@ -56,7 +58,7 @@ export default function Signup() {
   const pickFromCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Нет доступа', 'Разрешите доступ к камере в настройках, чтобы сделать фото.');
+      Alert.alert(t('photo.noAccess'), t('photo.cameraPermission'));
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -69,7 +71,7 @@ export default function Signup() {
     if (!result.canceled && asset?.base64) {
       const dataUri = `data:image/jpeg;base64,${asset.base64}`;
       if (isPhotoTooLarge(dataUri)) {
-        Alert.alert('Фото слишком большое', 'Попробуйте сделать снимок заново.');
+        Alert.alert(t('photo.tooLarge'), t('photo.retake'));
       } else {
         setAvatarUri(dataUri);
       }
@@ -78,12 +80,12 @@ export default function Signup() {
 
   const handleChoosePhoto = () => {
     const options = [
-      { text: 'Сделать фото', onPress: pickFromCamera },
-      { text: 'Выбрать из галереи', onPress: pickFromLibrary },
-      ...(avatarUri ? [{ text: 'Удалить фото', onPress: () => setAvatarUri(null), style: 'destructive' as const }] : []),
-      { text: 'Отмена', style: 'cancel' as const },
+      { text: t('photo.take'), onPress: pickFromCamera },
+      { text: t('photo.choose'), onPress: pickFromLibrary },
+      ...(avatarUri ? [{ text: t('photo.remove'), onPress: () => setAvatarUri(null), style: 'destructive' as const }] : []),
+      { text: t('common.cancel'), style: 'cancel' as const },
     ];
-    Alert.alert('Фото профиля', undefined, options);
+    Alert.alert(t('photo.profileTitle'), undefined, options);
   };
 
   const handleSubmit = async () => {
@@ -101,7 +103,7 @@ export default function Signup() {
       }
       router.replace('/(auth)/couple');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось создать аккаунт. Проверьте соединение.');
+      setError(err instanceof ApiError ? err.message : t('signup.failed'));
     } finally {
       loadingRef.current = false;
       setLoading(false);
@@ -111,8 +113,8 @@ export default function Signup() {
   return (
     <Screen>
       <BackHeader />
-      <Text style={styles.title}>Начнём знакомство 🌷</Text>
-      <Text style={styles.subtitle}>Это займёт меньше минуты</Text>
+      <Text style={styles.title}>{t('signup.title')}</Text>
+      <Text style={styles.subtitle}>{t('signup.subtitle')}</Text>
 
       <Pressable style={styles.avatarWrap} onPress={handleChoosePhoto} hitSlop={8}>
         <Avatar emoji="🌸" uri={avatarUri} size={84} />
@@ -122,7 +124,7 @@ export default function Signup() {
       </Pressable>
 
       <View style={{ marginTop: spacing.lg }}>
-        <TextField label="Имя" placeholder="Как вас называть?" value={name} onChangeText={setName} maxLength={20} />
+        <TextField label={t('signup.name')} placeholder={t('signup.namePlaceholder')} value={name} onChangeText={setName} maxLength={20} />
         <TextField
           label="Email"
           placeholder="you@example.com"
@@ -132,8 +134,8 @@ export default function Signup() {
           keyboardType="email-address"
         />
         <TextField
-          label="Пароль"
-          placeholder="Минимум 6 символов"
+          label={t('auth.password')}
+          placeholder={t('signup.passwordPlaceholder')}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -143,7 +145,7 @@ export default function Signup() {
       {error && <Text style={styles.error}>⚠️ {error}</Text>}
 
       <Button
-        label="Создать аккаунт"
+        label={t('auth.createAccount')}
         onPress={handleSubmit}
         disabled={!canSubmit}
         loading={loading}
@@ -153,21 +155,21 @@ export default function Signup() {
       <SocialRow />
 
       <Text style={styles.legal}>
-        Создавая аккаунт, вы соглашаетесь с{' '}
+        {t('signup.agreePrefix')}{' '}
         <Text style={styles.link} onPress={() => Linking.openURL(`${API_BASE_URL}/terms`)}>
-          условиями использования
+          {t('signup.terms')}
         </Text>{' '}
-        и{' '}
+        {t('signup.and')}{' '}
         <Text style={styles.link} onPress={() => Linking.openURL(`${API_BASE_URL}/privacy`)}>
-          политикой конфиденциальности
+          {t('signup.privacy')}
         </Text>
         .
       </Text>
 
       <Text style={styles.footer}>
-        Уже есть аккаунт?{' '}
+        {t('signup.haveAccount')}{' '}
         <Text style={styles.link} onPress={() => router.push('/(auth)/login')}>
-          Войти
+          {t('auth.signIn')}
         </Text>
       </Text>
     </Screen>

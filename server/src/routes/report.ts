@@ -1,17 +1,17 @@
 import { Router } from 'express';
 import { differenceInYears, format } from 'date-fns';
-import { ru } from 'date-fns/locale';
 import { db } from '../db';
 import { AuthedRequest, requireAuth } from '../auth';
-import { generateWeeklyReport } from '../openai';
+import { generateWeeklyReport, translateReport } from '../openai';
 import { sendPushNotification } from '../push';
 import { ensureCoupleContext, loadCoupleContext } from './couples';
-import { EntryInput, ProfileContext } from '../types';
-import { getWeatherSummary, WeatherSummary } from '../weather';
-import { Couple, User } from '@prisma/client';
+import { EntryInput, GenerateReportResponse, ProfileContext } from '../types';
+import { getWeatherSummary, localizeWeather, WeatherSummary } from '../weather';
+import { Couple, User, WeeklyReport } from '@prisma/client';
 import { logError } from '../sentry';
 import { generateReportLimiter } from '../rateLimiters';
 import { FREE_REPORT_LIMIT } from '../constants';
+import { DATE_LOCALES, Lang, langOf, normalizeLang, t } from '../i18n';
 
 export const reportRouter = Router();
 
@@ -99,10 +99,11 @@ function buildProfileContext(
   };
 }
 
-function formatWindowLabel(start: Date, end: Date) {
+function formatWindowLabel(start: Date, end: Date, lang: Lang) {
+  const locale = DATE_LOCALES[lang];
   const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
-  const startStr = format(start, sameMonth ? 'd' : 'd MMMM', { locale: ru });
-  const endStr = format(end, 'd MMMM', { locale: ru });
+  const startStr = format(start, sameMonth ? 'd' : 'd MMMM', { locale });
+  const endStr = format(end, 'd MMMM', { locale });
   return `${startStr} – ${endStr}`;
 }
 
@@ -145,16 +146,18 @@ export async function notifyCoupleReportReady(couple: Couple, me: User, partner:
     return;
   }
 
-  const message = 'Ваш новый отчёт готов 💞';
   const members = [me, partner].filter((u): u is User => !!u);
+  // Each partner gets it in their own language, even though the report
+  // itself is written in the generating partner's.
+  const messageFor = (u: User) => t(normalizeLang(u.language), 'notifReportReady');
   await db.notification.createMany({
-    data: members.map((u) => ({ userId: u.id, type: 'report_ready', message })),
+    data: members.map((u) => ({ userId: u.id, type: 'report_ready', message: messageFor(u) })),
   });
 
   const recipients = members.filter((u) => !!u.pushToken);
   console.log(`Sending report-ready push for couple ${couple.id} to ${recipients.length} recipient(s)`);
   await Promise.all(
-    recipients.map((u) => sendPushNotification(u.pushToken!, 'Together', message, { type: 'report_ready' }))
+    recipients.map((u) => sendPushNotification(u.pushToken!, 'Together', messageFor(u), { type: 'report_ready' }))
   );
 }
 
@@ -162,8 +165,12 @@ export async function notifyCoupleReportReady(couple: Couple, me: User, partner:
 // whatever's accumulated since the couple's last report (or since the couple
 // was created, if this is the first one), and skips quietly if there's
 // nothing new to say yet.
+// The report is shared by both partners but generated once, in the language
+// of whoever generates it (`me` -- for scheduled reports, the couple's first
+// member).
 export async function runReportGeneration(ctx: CoupleCtx) {
   const { couple, me, partner, isA } = ctx;
+  const lang = normalizeLang(me.language);
 
   const lastReport = await db.weeklyReport.findFirst({
     where: { coupleId: couple.id },
@@ -182,20 +189,22 @@ export async function runReportGeneration(ctx: CoupleCtx) {
     return { status: 'limit_reached' as const };
   }
 
-  const weekLabel = formatWindowLabel(windowStart, now);
+  const weekLabel = formatWindowLabel(windowStart, now, lang);
   const previousNarrative = lastReport
     ? (JSON.parse(lastReport.reportJson) as { narrative?: string }).narrative
     : undefined;
 
   const [weatherMe, weatherPartner] = await Promise.all([
-    getWeatherSummary(me.city, windowStart, now),
-    partner ? getWeatherSummary(partner.city, windowStart, now) : Promise.resolve(null),
+    getWeatherSummary(me.city, windowStart, now, lang),
+    partner ? getWeatherSummary(partner.city, windowStart, now, lang) : Promise.resolve(null),
   ]);
 
+  const partnerName = partner?.name ?? t(lang, 'partnerFallbackName');
   const result = await generateWeeklyReport({
+    language: lang,
     weekLabel,
-    userAName: isA ? me.name : partner?.name ?? 'Партнёр',
-    userBName: isA ? partner?.name ?? 'Партнёр' : me.name,
+    userAName: isA ? me.name : partnerName,
+    userBName: isA ? partnerName : me.name,
     entriesA: toEntryInput(isA ? myEntries : partnerEntries),
     entriesB: toEntryInput(isA ? partnerEntries : myEntries),
     profileA: buildProfileContext(isA ? me : partner),
@@ -213,6 +222,7 @@ export async function runReportGeneration(ctx: CoupleCtx) {
       coupleId: couple.id,
       weekId: now.toISOString(),
       weekLabel,
+      language: lang,
       reportJson: JSON.stringify({ ...result, weatherByUserId }),
     },
   });
@@ -251,18 +261,18 @@ reportRouter.post('/generate', generateReportLimiter, async (req: AuthedRequest,
 
   const ctx = await ensureCoupleContext(req.userId!);
   if (!ctx) {
-    res.status(404).json({ error: 'Пользователь не найден' });
+    res.status(404).json({ error: t(langOf(req), 'userNotFound') });
     return;
   }
 
   try {
     const result = await runReportGeneration(ctx);
     if (result.status === 'empty') {
-      res.status(409).json({ error: 'Добавьте хотя бы одну запись, чтобы получить отчёт' });
+      res.status(409).json({ error: t(langOf(req), 'reportNeedsEntry') });
       return;
     }
     if (result.status === 'limit_reached') {
-      res.status(402).json({ error: 'Бесплатные отчёты закончились. Оформите подписку Together Plus.' });
+      res.status(402).json({ error: t(langOf(req), 'reportLimitReached') });
       return;
     }
     res.json({ id: result.id, weekId: result.generatedAt, weekLabel: result.weekLabel, generatedAt: result.generatedAt, report: result.report });
@@ -272,9 +282,99 @@ reportRouter.post('/generate', generateReportLimiter, async (req: AuthedRequest,
     );
   } catch (err) {
     logError('Failed to generate weekly report', err);
-    res.status(502).json({ error: 'Не удалось сгенерировать отчёт' });
+    res.status(502).json({ error: t(langOf(req), 'reportGenerationFailed') });
   }
 });
+
+// A stored report is shared by both partners but written in one language.
+// Each reader gets it in their own: the original when it matches, otherwise
+// a translation made on first view and cached (translations don't count
+// toward the couple's free report quota).
+const pendingTranslations = new Map<string, Promise<GenerateReportResponse>>();
+
+function reportText(parsed: Partial<GenerateReportResponse>): GenerateReportResponse {
+  return {
+    narrative: parsed.narrative ?? '',
+    insight: parsed.insight ?? '',
+    appreciationHighlight: parsed.appreciationHighlight ?? '',
+    loveMapNote: parsed.loveMapNote ?? '',
+  };
+}
+
+async function reportTextIn(report: WeeklyReport, lang: Lang): Promise<GenerateReportResponse> {
+  const original = reportText(JSON.parse(report.reportJson));
+  if (normalizeLang(report.language) === lang) return original;
+
+  const cached = await db.reportTranslation.findUnique({
+    where: { reportId_language: { reportId: report.id, language: lang } },
+  });
+  if (cached) return reportText(JSON.parse(cached.reportJson));
+
+  const key = `${report.id}:${lang}`;
+  let pending = pendingTranslations.get(key);
+  if (!pending) {
+    pending = (async () => {
+      const translated = reportText(await translateReport(original, lang));
+      await db.reportTranslation.upsert({
+        where: { reportId_language: { reportId: report.id, language: lang } },
+        create: { reportId: report.id, language: lang, reportJson: JSON.stringify(translated) },
+        update: {},
+      });
+      return translated;
+    })().finally(() => pendingTranslations.delete(key));
+    pendingTranslations.set(key, pending);
+  }
+
+  try {
+    return await pending;
+  } catch (err) {
+    // Better the report in its original language than no report at all;
+    // the next view retries.
+    logError(`Failed to translate report ${report.id} to ${lang}`, err);
+    return original;
+  }
+}
+
+// The stored weekLabel is in the generating partner's language, so for
+// anyone else it's rebuilt from the window: previous report (or couple
+// creation) up to this report.
+function weekLabelIn(report: WeeklyReport, windowStart: Date, lang: Lang) {
+  return normalizeLang(report.language) === lang
+    ? report.weekLabel
+    : formatWindowLabel(windowStart, report.createdAt, lang);
+}
+
+async function previousReportDate(report: WeeklyReport, couple: Couple) {
+  const prev = await db.weeklyReport.findFirst({
+    where: { coupleId: report.coupleId, createdAt: { lt: report.createdAt } },
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true },
+  });
+  return prev?.createdAt ?? couple.createdAt;
+}
+
+async function presentReport(report: WeeklyReport, ctx: CoupleCtx) {
+  const { couple, me, partner } = ctx;
+  const lang = normalizeLang(me.language);
+  const [text, windowStart, entries] = await Promise.all([
+    reportTextIn(report, lang),
+    previousReportDate(report, couple),
+    loadReportedEntries(report.id, me.id, partner?.id),
+  ]);
+  const weather = resolveWeather(JSON.parse(report.reportJson), me.id, partner?.id);
+  return {
+    id: report.id,
+    weekId: report.weekId,
+    weekLabel: weekLabelIn(report, windowStart, lang),
+    generatedAt: report.createdAt.toISOString(),
+    report: {
+      ...text,
+      myEntries: toDisplayEntries(entries.mine),
+      partnerEntries: toDisplayEntries(entries.partner),
+      weather: { mine: localizeWeather(weather.mine, lang), partner: localizeWeather(weather.partner, lang) },
+    },
+  };
+}
 
 reportRouter.get('/latest', async (req: AuthedRequest, res) => {
   const ctx = await loadCoupleContext(req.userId!);
@@ -282,10 +382,9 @@ reportRouter.get('/latest', async (req: AuthedRequest, res) => {
     res.json(null);
     return;
   }
-  const { couple, me, partner } = ctx;
 
   const latest = await db.weeklyReport.findFirst({
-    where: { coupleId: couple.id },
+    where: { coupleId: ctx.couple.id },
     orderBy: { createdAt: 'desc' },
   });
   if (!latest) {
@@ -293,23 +392,7 @@ reportRouter.get('/latest', async (req: AuthedRequest, res) => {
     return;
   }
 
-  const { mine: myEntries, partner: partnerEntries } = await loadReportedEntries(latest.id, me.id, partner?.id);
-  const parsed = JSON.parse(latest.reportJson);
-  res.json({
-    id: latest.id,
-    weekId: latest.weekId,
-    weekLabel: latest.weekLabel,
-    generatedAt: latest.createdAt.toISOString(),
-    report: {
-      narrative: parsed.narrative,
-      insight: parsed.insight ?? '',
-      appreciationHighlight: parsed.appreciationHighlight ?? '',
-      loveMapNote: parsed.loveMapNote ?? '',
-      myEntries: toDisplayEntries(myEntries),
-      partnerEntries: toDisplayEntries(partnerEntries),
-      weather: resolveWeather(parsed, me.id, partner?.id),
-    },
-  });
+  res.json(await presentReport(latest, ctx));
 });
 
 reportRouter.get('/history', async (req: AuthedRequest, res) => {
@@ -318,42 +401,31 @@ reportRouter.get('/history', async (req: AuthedRequest, res) => {
     res.json([]);
     return;
   }
+  const lang = normalizeLang(ctx.me.language);
   const reports = await db.weeklyReport.findMany({
     where: { coupleId: ctx.couple.id },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: 'asc' },
   });
-  res.json(reports.map((r) => ({ id: r.id, weekLabel: r.weekLabel, generatedAt: r.createdAt.toISOString() })));
+  const rows = reports.map((r, i) => ({
+    id: r.id,
+    weekLabel: weekLabelIn(r, i > 0 ? reports[i - 1].createdAt : ctx.couple.createdAt, lang),
+    generatedAt: r.createdAt.toISOString(),
+  }));
+  res.json(rows.reverse());
 });
 
 reportRouter.get('/history/:id', async (req: AuthedRequest, res) => {
   const ctx = await loadCoupleContext(req.userId!);
   if (!ctx) {
-    res.status(404).json({ error: 'Пара не найдена' });
+    res.status(404).json({ error: t(langOf(req), 'coupleNotFound') });
     return;
   }
-  const { couple, me, partner } = ctx;
 
-  const report = await db.weeklyReport.findFirst({ where: { id: req.params.id, coupleId: couple.id } });
+  const report = await db.weeklyReport.findFirst({ where: { id: req.params.id, coupleId: ctx.couple.id } });
   if (!report) {
-    res.status(404).json({ error: 'Отчёт не найден' });
+    res.status(404).json({ error: t(langOf(req), 'reportNotFound') });
     return;
   }
 
-  const { mine: myEntries, partner: partnerEntries } = await loadReportedEntries(report.id, me.id, partner?.id);
-  const parsed = JSON.parse(report.reportJson);
-  res.json({
-    id: report.id,
-    weekId: report.weekId,
-    weekLabel: report.weekLabel,
-    generatedAt: report.createdAt.toISOString(),
-    report: {
-      narrative: parsed.narrative,
-      insight: parsed.insight ?? '',
-      appreciationHighlight: parsed.appreciationHighlight ?? '',
-      loveMapNote: parsed.loveMapNote ?? '',
-      myEntries: toDisplayEntries(myEntries),
-      partnerEntries: toDisplayEntries(partnerEntries),
-      weather: resolveWeather(parsed, me.id, partner?.id),
-    },
-  });
+  res.json(await presentReport(report, ctx));
 });

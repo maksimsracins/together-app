@@ -17,6 +17,7 @@ export interface ProfilePatch {
   loveLanguages?: string[];
   interests?: string[];
   timezone?: string;
+  language?: string;
   birthdate?: string | null;
   occupation?: string | null;
   habits?: string | null;

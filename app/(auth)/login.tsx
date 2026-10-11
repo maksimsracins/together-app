@@ -9,8 +9,10 @@ import { SocialRow } from '../../src/components/SocialRow';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { ApiError } from '../../src/services/http';
 import { colors, spacing, type } from '../../src/theme';
+import { useT } from '../../src/i18n';
 
 export default function Login() {
+  const t = useT();
   const login = useAuthStore((s) => s.login);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,7 +34,7 @@ export default function Login() {
       await login(email.trim(), password);
       router.replace('/(tabs)');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось войти. Проверьте соединение.');
+      setError(err instanceof ApiError ? err.message : t('login.failed'));
     } finally {
       loadingRef.current = false;
       setLoading(false);
@@ -42,8 +44,8 @@ export default function Login() {
   return (
     <Screen>
       <BackHeader />
-      <Text style={styles.title}>С возвращением 🌿</Text>
-      <Text style={styles.subtitle}>Рады снова вас видеть</Text>
+      <Text style={styles.title}>{t('login.title')}</Text>
+      <Text style={styles.subtitle}>{t('login.subtitle')}</Text>
 
       <View style={{ marginTop: spacing.xxl }}>
         <TextField
@@ -55,7 +57,7 @@ export default function Login() {
           keyboardType="email-address"
         />
         <TextField
-          label="Пароль"
+          label={t('auth.password')}
           placeholder="••••••••"
           value={password}
           onChangeText={setPassword}
@@ -65,14 +67,14 @@ export default function Login() {
 
       {error && <Text style={styles.error}>⚠️ {error}</Text>}
 
-      <Button label="Войти" onPress={handleSubmit} disabled={!canSubmit} loading={loading} style={{ marginTop: spacing.sm }} />
+      <Button label={t('auth.signIn')} onPress={handleSubmit} disabled={!canSubmit} loading={loading} style={{ marginTop: spacing.sm }} />
 
       <SocialRow />
 
       <Text style={styles.footer}>
-        Нет аккаунта?{' '}
+        {t('login.noAccount')}{' '}
         <Text style={styles.link} onPress={() => router.push('/(auth)/signup')}>
-          Зарегистрироваться
+          {t('login.signUp')}
         </Text>
       </Text>
     </Screen>

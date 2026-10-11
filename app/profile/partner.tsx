@@ -9,10 +9,13 @@ import { SectionHeader } from '../../src/components/SectionHeader';
 import { Chip } from '../../src/components/Chip';
 import { Avatar } from '../../src/components/Avatar';
 import { LoveLanguagesInfoButton } from '../../src/components/LoveLanguagesInfo';
+import { loveLanguageLabel } from '../../src/data/catalog';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { colors, spacing, type } from '../../src/theme';
+import { plural, useT } from '../../src/i18n';
 
 export default function PartnerProfile() {
+  const t = useT();
   const partner = useAuthStore((s) => s.partner);
   const daysTogether = partner?.relationshipStartDate
     ? differenceInDays(new Date(), new Date(partner.relationshipStartDate))
@@ -31,23 +34,23 @@ export default function PartnerProfile() {
       <View style={styles.header}>
         <Avatar emoji={partner.avatarEmoji} uri={partner.avatarUri} size={84} />
         <Text style={styles.name}>{partner.name}</Text>
-        {daysTogether !== null && <Text style={styles.daysTogether}>Вместе уже {daysTogether} дней</Text>}
+        {daysTogether !== null && <Text style={styles.daysTogether}>{t('profile.daysTogether', { n: daysTogether, days: plural('plural.days', daysTogether) })}</Text>}
       </View>
 
       <View style={styles.sectionTitleRow}>
-        <Text style={styles.sectionTitle}>Языки любви</Text>
+        <Text style={styles.sectionTitle}>{t('common.loveLanguages')}</Text>
         <LoveLanguagesInfoButton />
       </View>
       <View style={styles.chipsWrap}>
-        {partner.loveLanguages.length === 0 && <Text style={styles.emptyHint}>Пока не выбраны</Text>}
+        {partner.loveLanguages.length === 0 && <Text style={styles.emptyHint}>{t('common.notChosen')}</Text>}
         {partner.loveLanguages.map((l) => (
-          <Chip key={l} label={l} tone="rose" selected />
+          <Chip key={l} label={loveLanguageLabel(l)} tone="rose" selected />
         ))}
       </View>
 
-      <SectionHeader title="Интересы" />
+      <SectionHeader title={t('common.interests')} />
       <View style={styles.chipsWrap}>
-        {partner.interests.length === 0 && <Text style={styles.emptyHint}>Пока не выбраны</Text>}
+        {partner.interests.length === 0 && <Text style={styles.emptyHint}>{t('common.notChosen')}</Text>}
         {partner.interests.map((i) => (
           <Chip key={i} label={i} tone="sage" selected />
         ))}

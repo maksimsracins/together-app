@@ -13,8 +13,10 @@ import { useAuthStore } from '../../src/store/useAuthStore';
 import { createCouple, joinCouple } from '../../src/services/couples';
 import { ApiError } from '../../src/services/http';
 import { colors, radius, spacing, type } from '../../src/theme';
+import { useT } from '../../src/i18n';
 
 export default function CoupleSetup() {
+  const t = useT();
   const user = useAuthStore((s) => s.user);
   const refreshMe = useAuthStore((s) => s.refreshMe);
 
@@ -39,7 +41,7 @@ export default function CoupleSetup() {
     if (mode !== 'create' || inviteCode || !user?.coupleId) return;
     createCouple()
       .then((res) => setInviteCode(res.inviteCode))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Не удалось создать пару'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('couple.createFailed')));
   }, [mode, inviteCode, user?.coupleId]);
 
   const handleCreateCouple = async () => {
@@ -51,7 +53,7 @@ export default function CoupleSetup() {
       const res = await createCouple();
       setInviteCode(res.inviteCode);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось создать пару');
+      setError(err instanceof ApiError ? err.message : t('couple.createFailed'));
     } finally {
       creatingRef.current = false;
       setCreating(false);
@@ -68,7 +70,7 @@ export default function CoupleSetup() {
       await refreshMe();
       router.replace('/(tabs)');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось присоединиться. Проверьте код.');
+      setError(err instanceof ApiError ? err.message : t('couple.joinFailed'));
     } finally {
       joiningRef.current = false;
       setLoading(false);
@@ -89,7 +91,7 @@ export default function CoupleSetup() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      setError('Не удалось скопировать код. Используйте «Поделиться».');
+      setError(t('couple.copyFailed'));
     }
   };
 
@@ -97,7 +99,7 @@ export default function CoupleSetup() {
     if (!inviteCode) return;
     try {
       await Share.share({
-        message: `Присоединяйся ко мне в Together! Код приглашения: ${inviteCode}`,
+        message: t('couple.shareMessage', { code: inviteCode }),
       });
     } catch {
       // user cancelled the share sheet
@@ -107,21 +109,21 @@ export default function CoupleSetup() {
   return (
     <Screen>
       <BackHeader />
-      <Text style={styles.title}>Соедините сердца 💞</Text>
-      <Text style={styles.subtitle}>Создайте пару или присоединитесь по коду партнёра</Text>
+      <Text style={styles.title}>{t('couple.title')}</Text>
+      <Text style={styles.subtitle}>{t('couple.subtitle')}</Text>
 
       <View style={styles.toggleRow}>
         <Pressable
           style={[styles.toggleItem, mode === 'create' && styles.toggleItemActive]}
           onPress={() => setMode('create')}
         >
-          <Text style={[styles.toggleLabel, mode === 'create' && styles.toggleLabelActive]}>Создать пару</Text>
+          <Text style={[styles.toggleLabel, mode === 'create' && styles.toggleLabelActive]}>{t('couple.create')}</Text>
         </Pressable>
         <Pressable
           style={[styles.toggleItem, mode === 'join' && styles.toggleItemActive]}
           onPress={() => setMode('join')}
         >
-          <Text style={[styles.toggleLabel, mode === 'join' && styles.toggleLabelActive]}>Есть код</Text>
+          <Text style={[styles.toggleLabel, mode === 'join' && styles.toggleLabelActive]}>{t('couple.haveCode')}</Text>
         </Pressable>
       </View>
 
@@ -129,7 +131,7 @@ export default function CoupleSetup() {
         <Card tone="rose" style={{ alignItems: 'center', marginTop: spacing.xl }}>
           {inviteCode ? (
             <>
-              <Text style={styles.codeLabel}>Ваш код приглашения</Text>
+              <Text style={styles.codeLabel}>{t('couple.yourCode')}</Text>
               <Pressable onPress={handleCopy} disabled={!clipboardAvailable} hitSlop={8}>
                 <Text style={styles.code} selectable>
                   {inviteCode}
@@ -137,27 +139,27 @@ export default function CoupleSetup() {
               </Pressable>
               <Text style={styles.codeHint}>
                 {copied
-                  ? 'Скопировано!'
+                  ? t('couple.copied')
                   : clipboardAvailable
-                    ? 'Нажмите на код, чтобы скопировать, или отправьте его партнёру'
-                    : 'Зажмите код, чтобы выделить и скопировать, или отправьте его партнёру'}
+                    ? t('couple.tapToCopy')
+                    : t('couple.holdToCopy')}
               </Text>
               <View style={styles.codeActions}>
                 {clipboardAvailable && (
                   <Pressable style={styles.codeActionButton} onPress={handleCopy} hitSlop={8}>
-                    <Text style={styles.codeActionLabel}>Скопировать</Text>
+                    <Text style={styles.codeActionLabel}>{t('couple.copy')}</Text>
                   </Pressable>
                 )}
                 <Pressable style={styles.codeActionButton} onPress={handleShare} hitSlop={8}>
-                  <Text style={styles.codeActionLabel}>Поделиться</Text>
+                  <Text style={styles.codeActionLabel}>{t('couple.share')}</Text>
                 </Pressable>
               </View>
             </>
           ) : (
             <>
-              <Text style={styles.codeLabel}>У вас пока нет кода приглашения</Text>
+              <Text style={styles.codeLabel}>{t('couple.noCode')}</Text>
               <Button
-                label="Создать код"
+                label={t('couple.createCode')}
                 onPress={handleCreateCouple}
                 loading={creating}
                 style={{ marginTop: spacing.md }}
@@ -168,7 +170,7 @@ export default function CoupleSetup() {
       ) : (
         <View style={{ marginTop: spacing.xl }}>
           <TextField
-            label="Код приглашения"
+            label={t('couple.inviteCode')}
             placeholder="LOVE-XXXX"
             value={code}
             onChangeText={(t) => setCode(t.toUpperCase())}
@@ -180,17 +182,17 @@ export default function CoupleSetup() {
       {error && <Text style={styles.error}>⚠️ {error}</Text>}
 
       {mode === 'create' ? (
-        <Button label="Продолжить" onPress={handleContinueCreated} disabled={!inviteCode} style={{ marginTop: spacing.xl }} />
+        <Button label={t('couple.continue')} onPress={handleContinueCreated} disabled={!inviteCode} style={{ marginTop: spacing.xl }} />
       ) : (
         <Button
-          label="Присоединиться"
+          label={t('couple.join')}
           onPress={handleJoin}
           disabled={!code.trim()}
           loading={loading}
           style={{ marginTop: spacing.xl }}
         />
       )}
-      <Button label="Пропустить пока" variant="ghost" onPress={() => router.replace('/(tabs)')} />
+      <Button label={t('couple.skip')} variant="ghost" onPress={() => router.replace('/(tabs)')} />
     </Screen>
   );
 }

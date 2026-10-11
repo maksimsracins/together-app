@@ -4,6 +4,7 @@ import { db } from './db';
 import { notifyCoupleReportReady, runReportGeneration } from './routes/report';
 import { sendPushNotification } from './push';
 import { logError } from './sentry';
+import { normalizeLang, t } from './i18n';
 
 const CHECK_INTERVAL_MS = Number(process.env.REPORT_SCHEDULER_INTERVAL_MS) || 30 * 60 * 1000;
 
@@ -78,7 +79,7 @@ async function checkJournalReminders() {
         await sendPushNotification(
           member.pushToken,
           'Together',
-          'Вы ещё не делились впечатлениями на этой неделе — поделитесь, пока не поздно 🌿',
+          t(normalizeLang(member.language), 'notifJournalReminder'),
           { type: 'journal_reminder' }
         );
         await db.user.update({ where: { id: member.id }, data: { lastJournalReminderSentAt: now } });

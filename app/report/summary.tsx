@@ -20,9 +20,9 @@ import { useAppStore } from '../../src/store/useAppStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { generateReport, getReportHistoryDetail } from '../../src/services/report';
 import { emotionMeta } from '../../src/data/catalog';
-import { pluralDays } from '../../src/utils/week';
 import { EmotionKey, WeeklyReport, WeeklyReportEntry } from '../../src/types';
 import { colors, emotionColors, radius, spacing, type } from '../../src/theme';
+import { intlLocale, plural, t, useLang, useT } from '../../src/i18n';
 
 function wordCount(entries: WeeklyReportEntry[]) {
   return entries.reduce((sum, e) => sum + e.text.trim().split(/\s+/).filter(Boolean).length, 0);
@@ -30,15 +30,6 @@ function wordCount(entries: WeeklyReportEntry[]) {
 
 function photoCount(entries: WeeklyReportEntry[]) {
   return entries.filter((e) => e.hasPhoto).length;
-}
-
-function pluralEntries(n: number) {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod100 >= 11 && mod100 <= 14) return 'записей';
-  if (mod10 === 1) return 'запись';
-  if (mod10 >= 2 && mod10 <= 4) return 'записи';
-  return 'записей';
 }
 
 // The one categorical (non-quantitative) stat -- which emotion shows up most
@@ -108,7 +99,7 @@ function MoodByDayChart({ points }: { points: MoodPoint[] }) {
         const barHeight = magnitude > 0.08 ? Math.max(magnitude * 26, 4) : 0;
         const positive = p.valence > 0.08;
         const negative = p.valence < -0.08;
-        const label = new Date(p.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'numeric' });
+        const label = new Date(p.date).toLocaleDateString(intlLocale(), { day: 'numeric', month: 'numeric' });
         return (
           <View key={p.date} style={styles.moodChartCol}>
             <View style={styles.moodChartTrack}>
@@ -179,8 +170,11 @@ function buildFacts(mine: WeeklyReportEntry[], partnerEntries: WeeklyReportEntry
         bestCount = count;
       }
     }
-    const label = new Date(bestDay).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
-    facts.push({ icon: '📌', text: `Самый насыщенный день — ${label}: ${bestCount} ${pluralEntries(bestCount)}` });
+    const label = new Date(bestDay).toLocaleDateString(intlLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
+    facts.push({
+      icon: '📌',
+      text: t('summary.busiestDay', { day: label, n: bestCount, entries: plural('plural.entries', bestCount) }),
+    });
   }
 
   if (hasPartner) {
@@ -189,7 +183,7 @@ function buildFacts(mine: WeeklyReportEntry[], partnerEntries: WeeklyReportEntry
     let together = 0;
     for (const d of mineDays) if (partnerDays.has(d)) together += 1;
     if (together > 0) {
-      facts.push({ icon: '💞', text: `Вы писали в один и тот же день ${together} ${pluralDays(together)} на этой неделе` });
+      facts.push({ icon: '💞', text: t('summary.sameDay', { n: together, days: plural('plural.days', together) }) });
     }
   }
 
@@ -200,12 +194,14 @@ function buildFacts(mine: WeeklyReportEntry[], partnerEntries: WeeklyReportEntry
   }
   if (longest && longest.words >= 15) {
     const isMine = mine.includes(longest.entry);
-    const who = hasPartner ? (isMine ? 'у вас' : `у ${partnerName}`) : 'у вас';
-    facts.push({ icon: '📖', text: `Самая подробная запись — ${who}, ${longest.words} слов` });
+    const params = { n: longest.words, words: plural('plural.words', longest.words), name: partnerName };
+    const text = hasPartner && !isMine ? t('summary.longestPartner', params) : t('summary.longestYou', params);
+    facts.push({ icon: '📖', text });
   }
 
   if (all.length >= 4) {
-    const bucketOf = (hour: number) => (hour < 6 ? 'ночью' : hour < 12 ? 'утром' : hour < 18 ? 'днём' : 'вечером');
+    const bucketOf = (hour: number) =>
+      t(hour < 6 ? 'summary.atNight' : hour < 12 ? 'summary.inMorning' : hour < 18 ? 'summary.inAfternoon' : 'summary.inEvening');
     const counts = new Map<string, number>();
     for (const e of all) {
       const b = bucketOf(new Date(e.createdAt).getHours());
@@ -220,7 +216,7 @@ function buildFacts(mine: WeeklyReportEntry[], partnerEntries: WeeklyReportEntry
       }
     }
     if (bestCount / all.length >= 0.5) {
-      const text = hasPartner ? `Чаще всего вы оба писали ${bestBucket}` : `Вы чаще всего делитесь ${bestBucket}`;
+      const text = hasPartner ? t('summary.bothWroteMost', { when: bestBucket }) : t('summary.youShareMost', { when: bestBucket });
       facts.push({ icon: '⏰', text });
     }
   }
@@ -256,6 +252,8 @@ function useStagger(count: number) {
 }
 
 export default function ReportSummary() {
+  const tr = useT();
+  const lang = useLang();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const user = useAuthStore((s) => s.user)!;
   const partner = useAuthStore((s) => s.partner);
@@ -274,7 +272,7 @@ export default function ReportSummary() {
       await generateReport();
       await loadLatestReport();
     } catch (err) {
-      setTestError(err instanceof Error ? err.message : 'Не удалось сгенерировать отчёт');
+      setTestError(err instanceof Error ? err.message : tr('summary.generateFailed'));
     } finally {
       setTestGenerating(false);
     }
@@ -302,13 +300,13 @@ export default function ReportSummary() {
           weather: envelope.report.weather,
         });
       })
-      .catch(() => setHistoricalError('Не удалось загрузить отчёт'))
+      .catch(() => setHistoricalError(tr('summary.loadFailed')))
       .finally(() => setLoadingHistorical(false));
-  }, [id]);
+  }, [id, lang]);
 
   const r = id ? historical : liveReport;
   const hasPartner = !!partner;
-  const partnerName = partner?.name ?? 'Партнёр';
+  const partnerName = partner?.name ?? tr('common.partner');
 
   const stats = r
     ? {
@@ -356,7 +354,7 @@ export default function ReportSummary() {
         <Pressable onPress={() => router.back()} style={styles.closeBtn} hitSlop={10}>
           <Ionicons name="close" size={20} color={colors.ink} />
         </Pressable>
-        <Text style={styles.headerTitle} numberOfLines={1}>{r?.weekLabel ?? 'Отчёт'}</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{r?.weekLabel ?? tr('summary.report')}</Text>
         <View style={[styles.closeBtn, { backgroundColor: 'transparent' }]} />
       </View>
 
@@ -370,13 +368,13 @@ export default function ReportSummary() {
         ) : !r ? (
           <View style={styles.emptyWrap}>
             <Mascot pose="reading" size={96} style={{ marginBottom: spacing.md }} />
-            <Text style={styles.emptyTitle}>Отчёта пока нет</Text>
+            <Text style={styles.emptyTitle}>{tr('summary.emptyTitle')}</Text>
             <Text style={styles.emptyHint}>
-              AI соберёт историю недели автоматически, в день и час, указанные в настройках отчёта
+              {tr('summary.emptyBody')}
             </Text>
             {__DEV__ && !id && (
               <Button
-                label={testGenerating ? 'Генерируем…' : '🧪 Сгенерировать (тест)'}
+                label={testGenerating ? tr('summary.generating') : tr('summary.generateTest')}
                 onPress={handleTestGenerate}
                 loading={testGenerating}
                 variant="outline"
@@ -390,10 +388,10 @@ export default function ReportSummary() {
               <View style={styles.heroBadge}>
                 <Text style={styles.heroBadgeEmoji}>💌</Text>
               </View>
-              <Text style={styles.title}>Ваша история недели</Text>
+              <Text style={styles.title}>{tr('home.reportTitle')}</Text>
               {totalEntries > 0 && (
                 <Text style={styles.subtitle}>
-                  {totalEntries} {pluralEntries(totalEntries)} за этот период
+                  {tr('summary.entriesThisPeriod', { n: totalEntries, entries: plural('plural.entries', totalEntries, lang) })}
                 </Text>
               )}
 
@@ -405,7 +403,7 @@ export default function ReportSummary() {
                     <Ionicons name="flask-outline" size={13} color={colors.roseDark} />
                   )}
                   <Text style={styles.testLinkText}>
-                    {testGenerating ? 'Генерируем…' : 'Перегенерировать (тест)'}
+                    {testGenerating ? tr('summary.generating') : tr('summary.regenerateTest')}
                   </Text>
                 </Pressable>
               )}
@@ -416,7 +414,7 @@ export default function ReportSummary() {
               </View>
 
               <Pressable style={styles.toggle} onPress={() => setDetailsOpen((v) => !v)} hitSlop={6}>
-                <Text style={styles.toggleText}>{detailsOpen ? 'Свернуть' : 'Показать подробнее'}</Text>
+                <Text style={styles.toggleText}>{detailsOpen ? tr('summary.collapse') : tr('summary.expand')}</Text>
                 <Animated.View
                   style={{
                     transform: [
@@ -437,7 +435,7 @@ export default function ReportSummary() {
                     <View style={styles.weatherChip}>
                       <Text style={styles.weatherEmoji}>{r.weather.mine.emoji}</Text>
                       <Text style={styles.weatherText}>
-                        Я, {r.weather.mine.city}: {r.weather.mine.minTemp}–{r.weather.mine.maxTemp}°
+                        {tr('common.me')}, {r.weather.mine.city}: {r.weather.mine.minTemp}–{r.weather.mine.maxTemp}°
                       </Text>
                     </View>
                   )}
@@ -456,7 +454,7 @@ export default function ReportSummary() {
                 <View style={styles.insightBox}>
                   <View style={styles.insightHeaderRow}>
                     <Ionicons name="sparkles-outline" size={14} color={colors.inkSoft} />
-                    <Text style={styles.insightLabel}>Заметили совпадение</Text>
+                    <Text style={styles.insightLabel}>{tr('summary.insight')}</Text>
                   </View>
                   <Text style={styles.insightText}>{r.insight}</Text>
                 </View>
@@ -466,7 +464,7 @@ export default function ReportSummary() {
                 <View style={styles.appreciationBox}>
                   <View style={styles.insightHeaderRow}>
                     <Ionicons name="heart" size={13} color={colors.roseDark} />
-                    <Text style={[styles.insightLabel, { color: colors.roseDark }]}>Момент благодарности</Text>
+                    <Text style={[styles.insightLabel, { color: colors.roseDark }]}>{tr('summary.appreciation')}</Text>
                   </View>
                   <Text style={styles.appreciationText}>{r.appreciationHighlight}</Text>
                 </View>
@@ -476,7 +474,7 @@ export default function ReportSummary() {
                 <View style={styles.loveMapBox}>
                   <View style={styles.insightHeaderRow}>
                     <Ionicons name="bulb-outline" size={14} color={colors.skyDark} />
-                    <Text style={[styles.insightLabel, { color: colors.skyDark }]}>Может быть, вы не знали</Text>
+                    <Text style={[styles.insightLabel, { color: colors.skyDark }]}>{tr('summary.loveMap')}</Text>
                   </View>
                   <Text style={styles.loveMapText}>{r.loveMapNote}</Text>
                 </View>
@@ -484,22 +482,22 @@ export default function ReportSummary() {
 
               {emotionSlices.length > 0 && (
                 <View style={styles.paletteSection}>
-                  <Text style={styles.sectionLabel}>Эмоциональная палитра недели</Text>
+                  <Text style={styles.sectionLabel}>{tr('summary.palette')}</Text>
                   <EmotionPaletteBar slices={emotionSlices} total={allEntries.length} />
                 </View>
               )}
 
               {moodPoints.length > 1 && (
                 <View style={styles.moodSection}>
-                  <Text style={styles.sectionLabel}>Настроение по дням</Text>
+                  <Text style={styles.sectionLabel}>{tr('summary.moodByDay')}</Text>
                   <View style={styles.moodLegend}>
                     <View style={styles.moodLegendItem}>
                       <View style={[styles.moodLegendDot, { backgroundColor: colors.sage }]} />
-                      <Text style={styles.moodLegendText}>светлее, спокойнее</Text>
+                      <Text style={styles.moodLegendText}>{tr('summary.lighter')}</Text>
                     </View>
                     <View style={styles.moodLegendItem}>
                       <View style={[styles.moodLegendDot, { backgroundColor: colors.rose }]} />
-                      <Text style={styles.moodLegendText}>тяжелее, тревожнее</Text>
+                      <Text style={styles.moodLegendText}>{tr('summary.heavier')}</Text>
                     </View>
                   </View>
                   <MoodByDayChart points={moodPoints} />
@@ -508,7 +506,7 @@ export default function ReportSummary() {
 
               {facts.length > 0 && (
                 <View style={styles.factsSection}>
-                  <Text style={styles.sectionLabel}>Любопытные факты</Text>
+                  <Text style={styles.sectionLabel}>{tr('summary.facts')}</Text>
                   {facts.map((f, i) => (
                     <View key={i} style={[styles.factRow, i === facts.length - 1 && styles.factRowLast]}>
                       <Text style={styles.factIcon}>{f.icon}</Text>
@@ -520,7 +518,7 @@ export default function ReportSummary() {
 
               {stats && (
                 <View style={styles.statsSection}>
-                  <Text style={styles.sectionLabel}>Кто сколько писал</Text>
+                  <Text style={styles.sectionLabel}>{tr('summary.whoWrote')}</Text>
 
                   <View style={styles.statTableHeader}>
                     <View style={{ flex: 1 }} />
@@ -534,15 +532,15 @@ export default function ReportSummary() {
                     )}
                   </View>
 
-                  <StatTableRow icon="✍️" label="Записи" mine={stats.entriesMine} partner={stats.entriesPartner} hasPartner={hasPartner} />
-                  <StatTableRow icon="📝" label="Слов" mine={stats.wordsMine} partner={stats.wordsPartner} hasPartner={hasPartner} />
+                  <StatTableRow icon="✍️" label={tr('summary.rowEntries')} mine={stats.entriesMine} partner={stats.entriesPartner} hasPartner={hasPartner} />
+                  <StatTableRow icon="📝" label={tr('summary.rowWords')} mine={stats.wordsMine} partner={stats.wordsPartner} hasPartner={hasPartner} />
                   {(stats.photosMine > 0 || (stats.photosPartner ?? 0) > 0) && (
-                    <StatTableRow icon="📷" label="Фото" mine={stats.photosMine} partner={stats.photosPartner} hasPartner={hasPartner} />
+                    <StatTableRow icon="📷" label={tr('summary.rowPhotos')} mine={stats.photosMine} partner={stats.photosPartner} hasPartner={hasPartner} />
                   )}
                   {(stats.moodMine || stats.moodPartner) && (
                     <StatTableRow
                       icon="💭"
-                      label="Настроение"
+                      label={tr('summary.rowMood')}
                       mine={stats.moodMine ? emotionMeta(stats.moodMine).emoji : '—'}
                       partner={stats.moodPartner ? emotionMeta(stats.moodPartner).emoji : hasPartner ? '—' : null}
                       hasPartner={hasPartner}
@@ -557,7 +555,7 @@ export default function ReportSummary() {
             {!id && (
               <Pressable style={styles.historyLink} onPress={() => router.push('/report/history')} hitSlop={6}>
                 <Ionicons name="time-outline" size={15} color={colors.sageDark} />
-                <Text style={styles.historyLinkText}>Прошлые недели</Text>
+                <Text style={styles.historyLinkText}>{tr('history.title')}</Text>
                 <Ionicons name="chevron-forward" size={14} color={colors.sageDark} />
               </Pressable>
             )}

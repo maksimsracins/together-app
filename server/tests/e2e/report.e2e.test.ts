@@ -2,13 +2,22 @@ import request from 'supertest';
 
 jest.mock('../../src/openai', () => ({
   generateWeeklyReport: jest.fn(),
+  translateReport: jest.fn(),
 }));
 
 import { app } from '../../src/app';
 import { db } from '../../src/db';
-import { generateWeeklyReport } from '../../src/openai';
+import { generateWeeklyReport, translateReport } from '../../src/openai';
 
 const mockGenerate = generateWeeklyReport as jest.Mock;
+const mockTranslate = translateReport as jest.Mock;
+
+const FAKE_TRANSLATION = {
+  narrative: 'It was a warm week for the two of you.',
+  insight: 'You both wrote more often in the evenings.',
+  appreciationHighlight: 'Alice appreciated Bob’s support.',
+  loveMapNote: 'Bob mentioned Alice’s favourite show.',
+};
 
 const FAKE_REPORT = {
   narrative: 'Это была тёплая неделя для вас двоих.',
@@ -68,6 +77,8 @@ const ORIGINAL_KEY = process.env.OPENAI_API_KEY;
 beforeEach(() => {
   mockGenerate.mockReset();
   mockGenerate.mockResolvedValue(FAKE_REPORT);
+  mockTranslate.mockReset();
+  mockTranslate.mockResolvedValue(FAKE_TRANSLATION);
 });
 
 afterAll(() => {
@@ -288,5 +299,76 @@ describe('GET /api/report/history and /api/report/history/:id', () => {
       .get(`/api/report/history/${generated.body.id}`)
       .set('Authorization', `Bearer ${stranger.token}`);
     expect(res.status).toBe(404);
+  });
+});
+
+describe('per-user report language', () => {
+  beforeEach(() => {
+    process.env.OPENAI_API_KEY = 'test-key';
+  });
+
+  async function setLanguage(token: string, language: string) {
+    return request(app).patch('/api/me').set('Authorization', `Bearer ${token}`).send({ language });
+  }
+
+  it('generates in the generating partner’s language and translates once for the other', async () => {
+    const { alice, bob } = await pairUp('report-lang');
+    await setLanguage(bob.token, 'en');
+    await addEntry(alice.token, 'Alice entry');
+
+    const generated = await request(app).post('/api/report/generate').set('Authorization', `Bearer ${alice.token}`);
+    expect(generated.status).toBe(200);
+    expect(mockGenerate.mock.calls[0][0].language).toBe('ru');
+    expect(generated.body.report.narrative).toBe(FAKE_REPORT.narrative);
+
+    const forBob = await request(app).get('/api/report/latest').set('Authorization', `Bearer ${bob.token}`);
+    expect(forBob.body.report.narrative).toBe(FAKE_TRANSLATION.narrative);
+    expect(mockTranslate).toHaveBeenCalledTimes(1);
+    expect(mockTranslate.mock.calls[0][1]).toBe('en');
+
+    // Cached: a second view doesn't translate again, and Alice still gets the original.
+    const again = await request(app).get(`/api/report/history/${generated.body.id}`).set('Authorization', `Bearer ${bob.token}`);
+    expect(again.body.report.narrative).toBe(FAKE_TRANSLATION.narrative);
+    const forAlice = await request(app).get('/api/report/latest').set('Authorization', `Bearer ${alice.token}`);
+    expect(forAlice.body.report.narrative).toBe(FAKE_REPORT.narrative);
+    expect(mockTranslate).toHaveBeenCalledTimes(1);
+
+    // Translations don't use up the couple's report quota.
+    const couple = await db.couple.findFirst({ where: { members: { some: { id: alice.userId } } } });
+    expect(couple?.freeReportsUsed).toBe(1);
+  });
+
+  it('switches existing reports when the reader changes language', async () => {
+    const alice = await signupSoloWithCouple('Alice', 'report-lang-switch');
+    await addEntry(alice.token, 'A good day');
+    const generated = await request(app).post('/api/report/generate').set('Authorization', `Bearer ${alice.token}`);
+
+    await setLanguage(alice.token, 'lv');
+    const res = await request(app).get(`/api/report/history/${generated.body.id}`).set('Authorization', `Bearer ${alice.token}`);
+    expect(res.body.report.narrative).toBe(FAKE_TRANSLATION.narrative);
+    expect(mockTranslate.mock.calls[0][1]).toBe('lv');
+  });
+
+  it('falls back to the original text when translation fails', async () => {
+    const alice = await signupSoloWithCouple('Alice', 'report-lang-fail');
+    await addEntry(alice.token, 'A good day');
+    await request(app).post('/api/report/generate').set('Authorization', `Bearer ${alice.token}`);
+
+    mockTranslate.mockRejectedValueOnce(new Error('boom'));
+    await setLanguage(alice.token, 'en');
+    const res = await request(app).get('/api/report/latest').set('Authorization', `Bearer ${alice.token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.report.narrative).toBe(FAKE_REPORT.narrative);
+  });
+
+  it('allows changing language only once a day', async () => {
+    const alice = await signupAndLogin('Alice', 'lang-limit');
+    expect((await setLanguage(alice.token, 'en')).status).toBe(200);
+    // Re-sending the current language isn't a change.
+    expect((await setLanguage(alice.token, 'en')).status).toBe(200);
+    const blocked = await setLanguage(alice.token, 'lv');
+    expect(blocked.status).toBe(429);
+    const me = await request(app).get('/api/me').set('Authorization', `Bearer ${alice.token}`);
+    expect(me.body.language).toBe('en');
   });
 });

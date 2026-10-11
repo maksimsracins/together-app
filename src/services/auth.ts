@@ -1,5 +1,6 @@
 import { api, setToken } from './http';
 import { AppUser } from '../types';
+import { currentLang } from '../i18n';
 
 interface AuthResponse {
   token: string;
@@ -9,7 +10,7 @@ interface AuthResponse {
 export async function signup(email: string, password: string, name: string): Promise<AppUser> {
   const res = await api<AuthResponse>('/api/auth/signup', {
     method: 'POST',
-    body: { email, password, name },
+    body: { email, password, name, language: currentLang() },
     auth: false,
   });
   await setToken(res.token);
@@ -29,7 +30,7 @@ export async function login(email: string, password: string): Promise<AppUser> {
 export async function loginWithApple(identityToken: string, fullName?: string): Promise<AppUser> {
   const res = await api<AuthResponse>('/api/auth/apple', {
     method: 'POST',
-    body: { identityToken, fullName },
+    body: { identityToken, fullName, language: currentLang() },
     auth: false,
   });
   await setToken(res.token);

@@ -1,60 +1,65 @@
 import { Emotion, EntryTypeMeta } from '../types';
+import { t } from '../i18n';
+import { StringKey } from '../i18n/strings';
 
-export const ENTRY_TYPES: EntryTypeMeta[] = [
-  { key: 'worry', emoji: '🌧️', label: 'Переживание' },
-  { key: 'joy', emoji: '🌼', label: 'Радость' },
-  { key: 'gratitude', emoji: '🌷', label: 'Благодарность' },
-  { key: 'wish', emoji: '🌙', label: 'Пожелание' },
-  { key: 'thought', emoji: '💭', label: 'Мысль' },
-];
+// Labels are getters so they always read in the current app language.
+export const ENTRY_TYPES: EntryTypeMeta[] = (
+  [
+    { key: 'worry', emoji: '🌧️' },
+    { key: 'joy', emoji: '🌼' },
+    { key: 'gratitude', emoji: '🌷' },
+    { key: 'wish', emoji: '🌙' },
+    { key: 'thought', emoji: '💭' },
+  ] as const
+).map((e) => ({
+  ...e,
+  get label() {
+    return t(`entryType.${e.key}`);
+  },
+}));
 
-export const EMOTIONS: Emotion[] = [
-  { key: 'joy', emoji: '😀', label: 'Радость' },
-  { key: 'sadness', emoji: '😔', label: 'Грусть' },
-  { key: 'irritation', emoji: '😡', label: 'Раздражение' },
-  { key: 'anxiety', emoji: '😰', label: 'Тревога' },
-  { key: 'love', emoji: '❤️', label: 'Любовь' },
-  { key: 'hurt', emoji: '😞', label: 'Обида' },
-  { key: 'calm', emoji: '😌', label: 'Спокойствие' },
-  { key: 'doubt', emoji: '😕', label: 'Неуверенность' },
-  { key: 'gratitude', emoji: '😊', label: 'Благодарность' },
-];
+export const EMOTIONS: Emotion[] = (
+  [
+    { key: 'joy', emoji: '😀' },
+    { key: 'sadness', emoji: '😔' },
+    { key: 'irritation', emoji: '😡' },
+    { key: 'anxiety', emoji: '😰' },
+    { key: 'love', emoji: '❤️' },
+    { key: 'hurt', emoji: '😞' },
+    { key: 'calm', emoji: '😌' },
+    { key: 'doubt', emoji: '😕' },
+    { key: 'gratitude', emoji: '😊' },
+  ] as const
+).map((e) => ({
+  ...e,
+  get label() {
+    return t(`emotion.${e.key}`);
+  },
+}));
 
-export const LOVE_LANGUAGES = [
-  'Слова поддержки',
-  'Совместное время',
-  'Подарки',
-  'Помощь по дому',
-  'Прикосновения',
-];
+// Stored on the user as these stable keys; shown via loveLanguageLabel().
+export const LOVE_LANGUAGES = ['words', 'time', 'gifts', 'service', 'touch'] as const;
 
-export const LOVE_LANGUAGE_INFO: { label: string; emoji: string; description: string }[] = [
-  {
-    label: 'Слова поддержки',
-    emoji: '💬',
-    description: 'Тёплые слова, искренние комплименты и поддержка вслух значат для вас больше, чем что-либо ещё.',
-  },
-  {
-    label: 'Совместное время',
-    emoji: '⏳',
-    description: 'Внимание партнёра и время, проведённое вместе без отвлечений, — вот что наполняет вас любовью.',
-  },
-  {
-    label: 'Подарки',
-    emoji: '🎁',
-    description: 'Небольшой знак внимания, сделанный от души, говорит вам «я думал(а) о тебе».',
-  },
-  {
-    label: 'Помощь по дому',
-    emoji: '🧹',
-    description: 'Когда партнёр берёт на себя дела и помогает по хозяйству, вы чувствуете заботу и поддержку.',
-  },
-  {
-    label: 'Прикосновения',
-    emoji: '🤍',
-    description: 'Объятия, прикосновения и физическая близость — для вас важнейший способ почувствовать связь.',
-  },
-];
+const LOVE_LANGUAGE_EMOJI: Record<(typeof LOVE_LANGUAGES)[number], string> = {
+  words: '💬',
+  time: '⏳',
+  gifts: '🎁',
+  service: '🧹',
+  touch: '🤍',
+};
+
+export function loveLanguageLabel(key: string) {
+  return (LOVE_LANGUAGES as readonly string[]).includes(key) ? t(`love.${key}` as StringKey) : key;
+}
+
+export function loveLanguageInfo() {
+  return LOVE_LANGUAGES.map((key) => ({
+    key,
+    label: t(`love.${key}`),
+    emoji: LOVE_LANGUAGE_EMOJI[key],
+    description: t(`love.${key}.desc`),
+  }));
+}
 
 export const AVATAR_EMOJIS = ['🌸', '🌊', '🌿', '🌙', '⭐️', '☕️', '🎨', '🎧', '🦊', '🐣'];
 
