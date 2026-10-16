@@ -65,6 +65,10 @@ export default function Login() {
         />
       </View>
 
+      <Text style={styles.forgot} onPress={() => router.push({ pathname: '/(auth)/forgot', params: { email: email.trim() } })}>
+        {t('login.forgot')}
+      </Text>
+
       {error && <Text style={styles.error}>⚠️ {error}</Text>}
 
       <Button label={t('auth.signIn')} onPress={handleSubmit} disabled={!canSubmit} loading={loading} style={{ marginTop: spacing.sm }} />
@@ -84,6 +88,7 @@ export default function Login() {
 const styles = StyleSheet.create({
   title: { ...type.h1, color: colors.ink },
   subtitle: { ...type.body, color: colors.inkMuted, marginTop: spacing.xs },
+  forgot: { ...type.bodySm, color: colors.roseDark, fontFamily: type.bodySemibold.fontFamily, alignSelf: 'flex-end' },
   error: { ...type.bodySm, color: colors.danger, marginTop: spacing.lg, textAlign: 'center' },
   footer: { ...type.body, color: colors.inkMuted, textAlign: 'center', marginTop: spacing.xl },
   link: { color: colors.roseDark, fontFamily: type.bodySemibold.fontFamily },

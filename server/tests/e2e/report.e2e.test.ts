@@ -361,10 +361,12 @@ describe('per-user report language', () => {
     expect(res.body.report.narrative).toBe(FAKE_REPORT.narrative);
   });
 
-  it('allows changing language only once a day', async () => {
+  it('allows changing language up to 3 times a day', async () => {
     const alice = await signupAndLogin('Alice', 'lang-limit');
     expect((await setLanguage(alice.token, 'en')).status).toBe(200);
     // Re-sending the current language isn't a change.
+    expect((await setLanguage(alice.token, 'en')).status).toBe(200);
+    expect((await setLanguage(alice.token, 'lv')).status).toBe(200);
     expect((await setLanguage(alice.token, 'en')).status).toBe(200);
     const blocked = await setLanguage(alice.token, 'lv');
     expect(blocked.status).toBe(429);

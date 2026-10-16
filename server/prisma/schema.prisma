@@ -24,7 +24,12 @@ model User {
   interests                 String    @default("[]")
   timezone                  String    @default("UTC")
   language                  String    @default("en")
-  languageChangedAt         DateTime?
+  // ISO timestamps of recent language switches, for the daily limit.
+  languageChanges           String    @default("[]")
+  // Pending "forgot password" code: bcrypt hash, expiry, wrong guesses so far.
+  passwordResetCodeHash     String?
+  passwordResetExpiresAt    DateTime?
+  passwordResetAttempts     Int       @default(0)
   pushToken                 String?
   birthdate                 DateTime?
   occupation                String?

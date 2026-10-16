@@ -40,3 +40,17 @@ export async function loginWithApple(identityToken: string, fullName?: string): 
 export async function logout() {
   await setToken(null);
 }
+
+export function requestPasswordReset(email: string) {
+  return api<void>('/api/auth/forgot-password', { method: 'POST', body: { email }, auth: false });
+}
+
+export async function resetPassword(email: string, code: string, password: string): Promise<AppUser> {
+  const res = await api<AuthResponse>('/api/auth/reset-password', {
+    method: 'POST',
+    body: { email, code, password },
+    auth: false,
+  });
+  await setToken(res.token);
+  return res.user;
+}

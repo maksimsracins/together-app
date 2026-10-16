@@ -26,6 +26,7 @@ export default function Profile() {
   const loadLatestReport = useAppStore((s) => s.loadLatestReport);
   const t = useT();
   const lang = useLang();
+  const deleteAccount = useAuthStore((s) => s.deleteAccount);
   const [changingLang, setChangingLang] = useState(false);
   const daysTogether = partner && user.relationshipStartDate
     ? differenceInDays(new Date(), new Date(user.relationshipStartDate))
@@ -44,6 +45,28 @@ export default function Profile() {
     } finally {
       setChangingLang(false);
     }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      t('edit.deleteTitle'),
+      partner ? t('edit.deleteWithPartner', { name: partner.name }) : t('edit.deleteSolo'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('edit.deleteConfirm'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAccount();
+              router.replace('/(auth)/welcome');
+            } catch {
+              Alert.alert(t('common.error'), t('edit.deleteFailed'));
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -118,6 +141,11 @@ export default function Profile() {
 
       <Button label={t('profile.logout')} variant="outline" onPress={logout} style={{ marginTop: spacing.md }} />
 
+      <Pressable style={styles.deleteBtn} onPress={handleDeleteAccount} hitSlop={8}>
+        <Ionicons name="trash-outline" size={15} color={colors.danger} />
+        <Text style={styles.deleteLabel}>{t('edit.deleteButton')}</Text>
+      </Pressable>
+
       <View style={styles.legalRow}>
         <Text style={styles.legalLink} onPress={() => Linking.openURL(`${API_BASE_URL}/privacy`)}>
           {t('common.privacy')}
@@ -174,6 +202,8 @@ const styles = StyleSheet.create({
   emptyHint: { ...type.body, color: colors.inkMuted },
   langChips: { flexDirection: 'row', flexWrap: 'wrap' },
   langHint: { ...type.bodySm, color: colors.inkMuted, marginTop: spacing.xs, marginBottom: spacing.xl },
+  deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.lg },
+  deleteLabel: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.danger, marginLeft: 6 },
   legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: spacing.xl, marginBottom: spacing.md },
   legalLink: { ...type.bodySm, color: colors.inkMuted, textDecorationLine: 'underline' },
   legalDivider: { ...type.bodySm, color: colors.inkMuted, marginHorizontal: spacing.sm },

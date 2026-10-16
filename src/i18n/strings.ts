@@ -155,6 +155,25 @@ export const STRINGS = {
   'login.subtitle': { en: 'Good to see you again', lv: 'Priecājamies, ka esat atpakaļ', ru: 'Рады снова вас видеть' },
   'login.noAccount': { en: 'Don’t have an account?', lv: 'Nav konta?', ru: 'Нет аккаунта?' },
   'login.signUp': { en: 'Sign up', lv: 'Reģistrēties', ru: 'Зарегистрироваться' },
+  'login.forgot': { en: 'Forgot password?', lv: 'Aizmirsāt paroli?', ru: 'Забыли пароль?' },
+
+  // Forgot password
+  'forgot.title': { en: 'Reset password 🔑', lv: 'Paroles atiestatīšana 🔑', ru: 'Сброс пароля 🔑' },
+  'forgot.subtitle': {
+    en: 'Enter your email and we’ll send you a 6-digit code.',
+    lv: 'Ievadiet savu e-pastu, un mēs nosūtīsim 6 ciparu kodu.',
+    ru: 'Введите email, и мы пришлём 6-значный код.',
+  },
+  'forgot.codeSent': {
+    en: 'If an account exists for {email}, a code is on its way. It’s valid for 15 minutes.',
+    lv: 'Ja kontam {email} ir reģistrācija, kods jau ir ceļā. Tas ir derīgs 15 minūtes.',
+    ru: 'Если аккаунт {email} существует, код уже в пути. Он действует 15 минут.',
+  },
+  'forgot.sendCode': { en: 'Send code', lv: 'Nosūtīt kodu', ru: 'Отправить код' },
+  'forgot.code': { en: 'Code from email', lv: 'Kods no e-pasta', ru: 'Код из письма' },
+  'forgot.newPassword': { en: 'New password', lv: 'Jaunā parole', ru: 'Новый пароль' },
+  'forgot.reset': { en: 'Set new password', lv: 'Iestatīt jaunu paroli', ru: 'Сохранить новый пароль' },
+  'forgot.resend': { en: 'Send the code again', lv: 'Nosūtīt kodu vēlreiz', ru: 'Отправить код ещё раз' },
   'social.soonTitle': { en: 'Coming soon', lv: 'Drīzumā', ru: 'Скоро' },
   'social.soonBody': {
     en: 'Signing in with social networks is coming in a future update.',
@@ -357,9 +376,9 @@ export const STRINGS = {
   },
   'profile.language': { en: 'Language', lv: 'Valoda', ru: 'Язык' },
   'profile.languageHint': {
-    en: 'Reports switch to your language too. You can change it once a day.',
-    lv: 'Arī pārskati pārslēgsies uz jūsu valodu. To var mainīt reizi dienā.',
-    ru: 'Отчёты тоже переключатся на ваш язык. Менять его можно раз в день.',
+    en: 'Reports switch to your language too. You can change it up to 3 times a day.',
+    lv: 'Arī pārskati pārslēgsies uz jūsu valodu. To var mainīt līdz 3 reizēm dienā.',
+    ru: 'Отчёты тоже переключатся на ваш язык. Менять его можно до 3 раз в сутки.',
   },
   'profile.languageFailed': {
     en: 'Couldn’t change the language',

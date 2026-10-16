@@ -10,7 +10,8 @@ usersRouter.use(requireAuth);
 
 const MAX_AVATAR_DATA_URI_LENGTH = 5 * 1024 * 1024; // ~3.5MB of actual image data, base64-inflated
 const MAX_NAME_LENGTH = 20;
-const LANGUAGE_CHANGE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const LANGUAGE_CHANGE_LIMIT = 3;
+const LANGUAGE_CHANGE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 // Builds from before multi-language support still send love languages as
 // their Russian display labels -- store everything as the stable keys the
@@ -78,21 +79,29 @@ usersRouter.patch('/me', async (req: AuthedRequest, res) => {
   }
 
   // Switching language translates every past report the user opens, so it is
-  // limited to once a day.
+  // limited to a few times a day (rolling 24h window).
   let languageChanged = false;
+  let languageChanges: string[] = [];
   if (body.language !== undefined) {
     const current = await db.user.findUnique({
       where: { id: req.userId },
-      select: { language: true, languageChangedAt: true },
+      select: { language: true, languageChanges: true },
     });
     languageChanged = !!current && current.language !== body.language;
-    if (
-      languageChanged &&
-      current?.languageChangedAt &&
-      Date.now() - current.languageChangedAt.getTime() < LANGUAGE_CHANGE_COOLDOWN_MS
-    ) {
-      res.status(429).json({ error: t(lang, 'languageChangeLimit') });
-      return;
+    if (languageChanged && current) {
+      const now = Date.now();
+      try {
+        languageChanges = (JSON.parse(current.languageChanges) as string[]).filter(
+          (ts) => now - new Date(ts).getTime() < LANGUAGE_CHANGE_WINDOW_MS
+        );
+      } catch {
+        languageChanges = [];
+      }
+      if (languageChanges.length >= LANGUAGE_CHANGE_LIMIT) {
+        res.status(429).json({ error: t(lang, 'languageChangeLimit', { max: LANGUAGE_CHANGE_LIMIT }) });
+        return;
+      }
+      languageChanges = [...languageChanges, new Date(now).toISOString()];
     }
   }
 
@@ -110,7 +119,7 @@ usersRouter.patch('/me', async (req: AuthedRequest, res) => {
       }),
       ...(body.interests !== undefined && { interests: JSON.stringify(body.interests) }),
       ...(body.timezone !== undefined && { timezone: body.timezone }),
-      ...(languageChanged && { language: body.language, languageChangedAt: new Date() }),
+      ...(languageChanged && { language: body.language, languageChanges: JSON.stringify(languageChanges) }),
       ...(body.birthdate !== undefined && { birthdate: body.birthdate ? new Date(body.birthdate) : null }),
       ...(body.occupation !== undefined && { occupation: body.occupation }),
       ...(body.habits !== undefined && { habits: body.habits }),
