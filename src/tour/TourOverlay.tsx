@@ -44,10 +44,15 @@ export function TourOverlay() {
     : null;
   const waitingForTarget = !!step.target && !rect;
 
+  // Re-run on `active` too: a replay starts at step 0 again, so the index
+  // alone wouldn't change and the card would stay at opacity 0.
   useEffect(() => {
     fade.setValue(0);
-    if (!waitingForTarget) Animated.timing(fade, { toValue: 1, duration: 220, useNativeDriver: true }).start();
-  }, [index, waitingForTarget, hole?.x, hole?.y]);
+    if (!active || waitingForTarget) return;
+    const anim = Animated.timing(fade, { toValue: 1, duration: 220, useNativeDriver: true });
+    anim.start();
+    return () => anim.stop();
+  }, [active, index, waitingForTarget, hole?.x, hole?.y]);
 
   if (!active) return null;
 
