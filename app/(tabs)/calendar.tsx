@@ -23,6 +23,7 @@ import { Entry } from '../../src/types';
 import { colors, radius, spacing, type } from '../../src/theme';
 import { daysUntilNextReport } from '../../src/utils/week';
 import { dateLocale, plural, useLang, useT } from '../../src/i18n';
+import { TourTarget } from '../../src/tour/TourTarget';
 
 type Author = 'mine' | 'partner';
 interface Selection {
@@ -125,7 +126,8 @@ export default function CalendarScreen() {
         {partner ? t('calendar.subtitlePartner') : t('calendar.subtitleSolo')}
       </Text>
 
-      <Card style={{ marginTop: spacing.md }}>
+      <TourTarget id="calendarWeek" style={{ marginTop: spacing.md }}>
+      <Card>
         <View style={styles.weekHeader}>
           <Pressable onPress={() => goToWeek(subWeeks(weekCursor, 1))} hitSlop={10} style={styles.weekNavBtn}>
             <Ionicons name="chevron-back" size={18} color={colors.roseDark} />
@@ -203,6 +205,7 @@ export default function CalendarScreen() {
           </View>
         )}
       </Card>
+      </TourTarget>
 
       <Text style={styles.selectedLabel}>
         {selected.author === 'mine'

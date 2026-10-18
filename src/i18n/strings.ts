@@ -387,6 +387,84 @@ export const STRINGS = {
   },
   'profile.logout': { en: 'Log out', lv: 'Iziet', ru: 'Выйти' },
 
+  // Onboarding tour
+  'tour.next': { en: 'Next', lv: 'Tālāk', ru: 'Далее' },
+  'tour.skip': { en: 'Skip', lv: 'Izlaist', ru: 'Пропустить' },
+  'tour.finish': { en: 'Let’s go!', lv: 'Sākam!', ru: 'Начать!' },
+  'tour.replay': { en: 'How the app works', lv: 'Kā lietot lietotni', ru: 'Как пользоваться приложением' },
+  'tour.welcomeTitle': { en: 'Welcome to Together 💞', lv: 'Laipni lūdzam Together 💞', ru: 'Добро пожаловать в Together 💞' },
+  'tour.welcomeBody': {
+    en: 'A quick tour of the main things you can do here. It takes less than a minute.',
+    lv: 'Īss ieskats galvenajās iespējās. Tas aizņems mazāk nekā minūti.',
+    ru: 'Коротко покажем главное. Это займёт меньше минуты.',
+  },
+  'tour.coupleTitle': { en: 'Your couple', lv: 'Jūsu pāris', ru: 'Ваша пара' },
+  'tour.coupleBody': {
+    en: 'You and your partner. Tap “+” to invite them with a code, or tap their photo to see their profile.',
+    lv: 'Jūs un jūsu partneris. Pieskarieties “+”, lai uzaicinātu ar kodu, vai partnera foto, lai redzētu profilu.',
+    ru: 'Вы и ваш партнёр. Нажмите «+», чтобы пригласить по коду, или на фото партнёра, чтобы открыть его профиль.',
+  },
+  'tour.countdownTitle': { en: 'Weekly report countdown', lv: 'Līdz nedēļas pārskatam', ru: 'Отсчёт до отчёта' },
+  'tour.countdownBody': {
+    en: 'Time left until your next weekly report. Then you’ll both see each other’s entries and an AI summary of your week.',
+    lv: 'Laiks līdz nākamajam nedēļas pārskatam. Tad jūs abi redzēsiet viens otra ierakstus un AI nedēļas kopsavilkumu.',
+    ru: 'Сколько осталось до еженедельного отчёта. Тогда вы оба увидите записи друг друга и AI-итог вашей недели.',
+  },
+  'tour.settingsTitle': { en: 'Report settings', lv: 'Pārskata iestatījumi', ru: 'Настройка отчёта' },
+  'tour.settingsBody': {
+    en: 'Choose the day and time of your report and turn on notifications. These settings are shared with your partner.',
+    lv: 'Izvēlieties pārskata dienu un laiku un ieslēdziet paziņojumus. Iestatījumi ir kopīgi ar partneri.',
+    ru: 'Выберите день и время отчёта и включите уведомления. Настройки общие для вас и партнёра.',
+  },
+  'tour.addTitle': { en: 'Share an emotion', lv: 'Dalieties ar emociju', ru: 'Добавьте эмоцию' },
+  'tour.addBody': {
+    en: 'The main thing in the app: note how you feel, what made you happy or upset. A photo can be added too.',
+    lv: 'Galvenais lietotnē: pierakstiet, kā jūtaties, kas iepriecināja vai apbēdināja. Var pievienot arī foto.',
+    ru: 'Главное в приложении: запишите, что вы чувствуете, что порадовало или расстроило. Можно добавить фото.',
+  },
+  'tour.reportTitle': { en: 'Weekly report', lv: 'Nedēļas pārskats', ru: 'Отчёт недели' },
+  'tour.reportBody': {
+    en: 'When the report is ready, it opens here: highlights of your week and tips for your relationship.',
+    lv: 'Kad pārskats ir gatavs, tas atveras šeit: nedēļas svarīgākais un padomi attiecībām.',
+    ru: 'Когда отчёт готов, он откроется здесь: главное за неделю и советы для ваших отношений.',
+  },
+  'tour.bellTitle': { en: 'Notifications', lv: 'Paziņojumi', ru: 'Уведомления' },
+  'tour.bellBody': {
+    en: 'Partner news lives here: when they join, change settings or a new report arrives.',
+    lv: 'Šeit ir partnera jaunumi: kad viņš pievienojas, maina iestatījumus vai ir gatavs jauns pārskats.',
+    ru: 'Здесь новости от партнёра: присоединение, смена настроек, новый отчёт.',
+  },
+  'tour.tabCalendarTitle': { en: 'Calendar', lv: 'Kalendārs', ru: 'Календарь' },
+  'tour.tabCalendarBody': {
+    en: 'All your entries by day. Let’s take a look.',
+    lv: 'Visi jūsu ieraksti pa dienām. Apskatīsimies.',
+    ru: 'Все ваши записи по дням. Давайте заглянем.',
+  },
+  'tour.calendarTitle': { en: 'Your week', lv: 'Jūsu nedēļa', ru: 'Ваша неделя' },
+  'tour.calendarBody': {
+    en: 'A dot means there’s an entry that day. Tap a day to read it. Your partner’s entries open after the weekly report.',
+    lv: 'Punkts nozīmē, ka tajā dienā ir ieraksts. Pieskarieties dienai, lai to izlasītu. Partnera ieraksti atveras pēc pārskata.',
+    ru: 'Точка — в этот день есть запись. Нажмите на день, чтобы прочитать. Записи партнёра откроются после отчёта.',
+  },
+  'tour.tabProfileTitle': { en: 'Profile', lv: 'Profils', ru: 'Профиль' },
+  'tour.tabProfileBody': {
+    en: 'Your profile, app language and account settings.',
+    lv: 'Jūsu profils, lietotnes valoda un konta iestatījumi.',
+    ru: 'Ваш профиль, язык приложения и настройки аккаунта.',
+  },
+  'tour.editTitle': { en: 'Tell about yourself', lv: 'Pastāstiet par sevi', ru: 'Расскажите о себе' },
+  'tour.editBody': {
+    en: 'Add a photo, love languages and interests. The more you share, the more personal your reports will be.',
+    lv: 'Pievienojiet foto, mīlestības valodas un intereses. Jo vairāk pastāstīsiet, jo personiskāki būs pārskati.',
+    ru: 'Добавьте фото, языки любви и интересы. Чем больше вы расскажете, тем точнее будут отчёты.',
+  },
+  'tour.doneTitle': { en: 'All set! 🌿', lv: 'Viss gatavs! 🌿', ru: 'Всё готово! 🌿' },
+  'tour.doneBody': {
+    en: 'Start with your first emotion today. You can replay this tour anytime from your profile.',
+    lv: 'Sāciet ar pirmo emociju jau šodien. Šo ceļvedi var atkārtot jebkurā laikā profilā.',
+    ru: 'Начните с первой эмоции уже сегодня. Обучение можно пройти снова в профиле.',
+  },
+
   // Edit profile
   'edit.title': { en: 'Edit profile', lv: 'Rediģēt profilu', ru: 'Редактировать профиль' },
   'edit.exportTitle': { en: 'My Together data', lv: 'Mani Together dati', ru: 'Мои данные Together' },

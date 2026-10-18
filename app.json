@@ -2,7 +2,7 @@
   "expo": {
     "name": "Together",
     "slug": "together-app",
-    "version": "2.2.0",
+    "version": "2.3.0",
     "scheme": "together",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -47,7 +47,8 @@
       ],
       "expo-secure-store",
       "expo-notifications",
-      "@sentry/react-native"
+      "@sentry/react-native",
+      "./plugins/withPodsDeploymentTarget"
     ],
     "extra": {
       "router": {},

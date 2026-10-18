@@ -2,14 +2,31 @@ import React, { useEffect, useRef } from 'react';
 import { Redirect, Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, type } from '../../src/theme';
-import { Alert, AppState, Platform } from 'react-native';
+import { Alert, AppState, Platform, Pressable, View } from 'react-native';
+import type { BottomTabBarButtonProps } from 'expo-router/tabs';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useAppStore } from '../../src/store/useAppStore';
 import { useNotificationsStore } from '../../src/store/useNotificationsStore';
 import { useT } from '../../src/i18n';
+import { TourOverlay } from '../../src/tour/TourOverlay';
+import { TourTarget } from '../../src/tour/TourTarget';
+import { useTourStore } from '../../src/tour/useTourStore';
 
 const PARTNER_POLL_INTERVAL_MS = 6000;
+
+// Tab buttons the walkthrough can spotlight.
+function tourTabButton(id: string) {
+  return function TourTabButton({ ref: _ref, ...props }: BottomTabBarButtonProps) {
+    return (
+      <TourTarget id={id} style={{ flex: 1 }}>
+        <Pressable {...(props as React.ComponentProps<typeof Pressable>)} style={[props.style, { flex: 1 }]} />
+      </TourTarget>
+    );
+  };
+}
+const CalendarTabButton = tourTabButton('tabCalendar');
+const ProfileTabButton = tourTabButton('tabProfile');
 
 export default function TabsLayout() {
   const t = useT();
@@ -69,6 +86,15 @@ export default function TabsLayout() {
     return () => subscription.remove();
   }, [authStatus, refreshMe, loadNotifications, loadLatestReport, loadCoupleSettings]);
 
+  // First time this account reaches the app: walk them through it. The short
+  // delay lets Home lay out before the first spotlight measures it.
+  const userId = user?.id;
+  useEffect(() => {
+    if (authStatus !== 'authed' || !userId) return;
+    const timer = setTimeout(() => useTourStore.getState().startIfFirstTime(userId), 700);
+    return () => clearTimeout(timer);
+  }, [authStatus, userId]);
+
   const previousPartnerRef = useRef(partner);
   useEffect(() => {
     if (!previousPartnerRef.current && partner) {
@@ -83,6 +109,7 @@ export default function TabsLayout() {
   }
 
   return (
+    <View style={{ flex: 1 }}>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -116,6 +143,7 @@ export default function TabsLayout() {
         options={{
           title: t('tabs.calendar'),
           tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
+          tabBarButton: CalendarTabButton,
         }}
       />
       <Tabs.Screen
@@ -123,8 +151,11 @@ export default function TabsLayout() {
         options={{
           title: t('tabs.profile'),
           tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
+          tabBarButton: ProfileTabButton,
         }}
       />
     </Tabs>
+    <TourOverlay />
+    </View>
   );
 }

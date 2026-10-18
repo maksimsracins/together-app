@@ -14,6 +14,8 @@ import { useAppStore } from '../../src/store/useAppStore';
 import { ApiError } from '../../src/services/http';
 import { intlLocale, Lang, LANGUAGE_NAMES, LANGUAGES, plural, useLang, useT } from '../../src/i18n';
 import { useAuthStore } from '../../src/store/useAuthStore';
+import { TourTarget } from '../../src/tour/TourTarget';
+import { useTourStore } from '../../src/tour/useTourStore';
 import { API_BASE_URL } from '../../src/services/http';
 import { colors, radius, spacing, type } from '../../src/theme';
 import { differenceInDays } from 'date-fns';
@@ -71,10 +73,12 @@ export default function Profile() {
 
   return (
     <Screen ambient>
+      <TourTarget id="profileEdit" style={styles.editBtnTarget}>
       <Pressable style={styles.editBtn} onPress={() => router.push('/profile/edit')} hitSlop={10}>
         <Ionicons name="pencil-outline" size={16} color={colors.roseDark} />
         <Text style={styles.editBtnLabel}>{t('profile.edit')}</Text>
       </Pressable>
+      </TourTarget>
 
       <View style={styles.header}>
         <Avatar emoji={user.avatarEmoji} uri={user.avatarUri} size={84} />
@@ -139,6 +143,11 @@ export default function Profile() {
       </View>
       <Text style={styles.langHint}>{t('profile.languageHint')}</Text>
 
+      <Pressable style={styles.tourBtn} onPress={() => useTourStore.getState().start(user.id)} hitSlop={8}>
+        <Ionicons name="help-circle-outline" size={16} color={colors.roseDark} />
+        <Text style={styles.tourLabel}>{t('tour.replay')}</Text>
+      </Pressable>
+
       <Button label={t('profile.logout')} variant="outline" onPress={logout} style={{ marginTop: spacing.md }} />
 
       <Pressable style={styles.deleteBtn} onPress={handleDeleteAccount} hitSlop={8}>
@@ -169,10 +178,10 @@ function Row({ label, value, last }: { label: string; value: string; last?: bool
 }
 
 const styles = StyleSheet.create({
-  editBtn: {
-    flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end',
-    marginTop: spacing.lg, marginRight: spacing.md, paddingVertical: spacing.xs,
-  },
+  editBtnTarget: { alignSelf: 'flex-end', marginTop: spacing.lg, marginRight: spacing.md },
+  editBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs },
+  tourBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.lg },
+  tourLabel: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.roseDark, marginLeft: 6 },
   editBtnLabel: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.roseDark, marginLeft: 6 },
   header: { alignItems: 'center', marginTop: spacing.sm, marginBottom: spacing.xl },
   name: { ...type.h2, color: colors.ink, marginTop: spacing.md },

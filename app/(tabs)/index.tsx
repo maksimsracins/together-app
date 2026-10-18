@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/components/Screen';
 import { Card } from '../../src/components/Card';
 import { Avatar } from '../../src/components/Avatar';
+import { TourTarget } from '../../src/tour/TourTarget';
 import { useAppStore } from '../../src/store/useAppStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useNotificationsStore } from '../../src/store/useNotificationsStore';
@@ -203,6 +204,7 @@ export default function Home() {
           </Text>
           <Text style={styles.subGreeting}>{tr('home.subGreeting')}</Text>
         </View>
+        <TourTarget id="bell">
         <Pressable onPress={() => router.push('/notifications')} hitSlop={8} style={styles.bellBtn}>
           <Ionicons name="notifications-outline" size={22} color={colors.ink} />
           {unreadCount > 0 && (
@@ -211,8 +213,10 @@ export default function Home() {
             </View>
           )}
         </Pressable>
+        </TourTarget>
       </View>
 
+      <TourTarget id="couple" style={styles.coupleTarget}>
       <View style={styles.coupleRow}>
         <View style={styles.coupleItem}>
           <Pressable onPress={() => router.push(partner ? '/profile/partner' : '/(auth)/couple')} hitSlop={6}>
@@ -236,16 +240,20 @@ export default function Home() {
           <Text style={styles.coupleName} numberOfLines={1}>{user.name}</Text>
         </View>
       </View>
+      </TourTarget>
 
-      <Card tone="sage" style={styles.countdownCard}>
+      <TourTarget id="countdown" style={styles.countdownCard}>
+      <Card tone="sage">
         <View style={styles.countdownHeaderRow}>
           <Ionicons name="heart" size={14} color={colors.rose} />
           <Text style={[styles.countdownLabel, { flex: 1 }]}>
             {partner ? tr('home.partnerSoon', { name: partner.name }) : tr('home.untilNext')}
           </Text>
+          <TourTarget id="reportSettings">
           <Pressable onPress={() => setSettingsVisible(true)} hitSlop={8}>
             <Ionicons name="settings-outline" size={16} color={colors.sageDark} />
           </Pressable>
+          </TourTarget>
         </View>
 
         <View style={styles.countdownRow}>
@@ -261,7 +269,9 @@ export default function Home() {
           )}
         </View>
       </Card>
+      </TourTarget>
 
+      <TourTarget id="report">
       <Pressable
         style={({ pressed }) => [
           styles.reportCard,
@@ -289,15 +299,18 @@ export default function Home() {
         </View>
         <Ionicons name="chevron-forward" size={18} color={weeklyReport ? colors.roseDark : colors.inkMuted} />
       </Pressable>
+      </TourTarget>
 
       <View style={{ flex: 1 }} />
 
+      <TourTarget id="addEntry" style={styles.ctaTarget}>
       <Pressable style={styles.cta} onPress={() => router.push('/entry/new')}>
         <View style={styles.ctaCircle}>
           <Ionicons name="add" size={30} color={colors.white} />
         </View>
         <Text style={styles.ctaLabel}>{tr('home.share')}</Text>
       </Pressable>
+      </TourTarget>
       </Screen>
 
       <Modal
@@ -443,8 +456,9 @@ const styles = StyleSheet.create({
     borderColor: colors.cream,
   },
   badgeText: { fontSize: 10, fontFamily: type.bodySemibold.fontFamily, color: colors.white },
+  coupleTarget: { alignSelf: 'center', marginBottom: spacing.xl },
   coupleRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xl,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
   },
   coupleItem: { alignItems: 'center', width: 96 },
   coupleName: { ...type.bodySm, fontFamily: type.bodySemibold.fontFamily, color: colors.ink, marginTop: spacing.sm },
@@ -483,7 +497,8 @@ const styles = StyleSheet.create({
   reportTitle: { ...type.bodySemibold, fontFamily: type.bodySemibold.fontFamily, color: colors.ink },
   reportHint: { ...type.bodySm, color: colors.inkMuted, marginTop: 2 },
   reportHintReady: { fontFamily: type.bodySemibold.fontFamily, color: colors.roseDark },
-  cta: { alignItems: 'center', marginBottom: spacing.xxl },
+  ctaTarget: { alignSelf: 'center', marginBottom: spacing.xxl },
+  cta: { alignItems: 'center' },
   ctaCircle: {
     width: 64, height: 64, borderRadius: 32, backgroundColor: colors.rose,
     alignItems: 'center', justifyContent: 'center', ...shadow.soft,
